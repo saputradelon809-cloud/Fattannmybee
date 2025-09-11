@@ -180,7 +180,7 @@ local function initMain()
     local mouse = LocalPlayer:GetMouse()
 
     -- ============================
-    -- Fly (Tap-to-move for mobile & PC; speed adjustable 1..1000)
+    -- Fly (Joystick Mode) -> ***DI-GANTI DENGAN VERSI JOYSTICK*** 
     -- ============================
     local flying = false
     local flyBV, flyBG, flyConn
@@ -216,7 +216,7 @@ local function initMain()
         setFlySpeed(flyValue.Text)
     end)
 
-    createButton("Fly (Tap Mode) - Toggle", function()
+    createButton("Fly (Joystick Mode) - Toggle", function()
         if flying then
             -- stop fly
             flying = false
@@ -229,7 +229,7 @@ local function initMain()
             local hum = ch:FindFirstChildOfClass("Humanoid")
             if hum then pcall(function() hum.PlatformStand = false end) end
         else
-            -- start fly
+            -- start fly (joystick / WASD control)
             flying = true
             local ch = safeChar()
             local hrp = ch:WaitForChild("HumanoidRootPart")
@@ -248,57 +248,23 @@ local function initMain()
             flyBG.CFrame = hrp.CFrame
             flyBG.Parent = hrp
 
-            -- helper: get world point from input (supports mouse.Hit and touch)
-            local lastTouchPos = nil
-            local function getWorldPoint()
-                -- prefer lastTouchPos (for mobile touch)
-                if lastTouchPos then
-                    -- convert screen point to world via Camera
-                    local unitRay = Camera:ScreenPointToRay(lastTouchPos.X, lastTouchPos.Y)
-                    local ray = Ray.new(unitRay.Origin, unitRay.Direction * 9999)
-                    local part, pos = Workspace:FindPartOnRay(ray, safeChar(), false, true)
-                    if pos then return pos end
-                    return unitRay.Origin + unitRay.Direction * 50
-                end
-                if mouse and mouse.Hit then
-                    return mouse.Hit.p
-                end
-                return nil
-            end
-
-            -- touch handling for mobile: update lastTouchPos when touch begins
-            local touchConn
-            touchConn = UserInputService.TouchStarted:Connect(function(t)
-                lastTouchPos = Vector2.new(t.Position.X, t.Position.Y)
-                -- clear after short time so continuous follow not forced unless tapped repeatedly
-                task.delay(0.25, function() lastTouchPos = nil end)
-            end)
-
+            -- Use MoveDirection (joystick/WASD) for movement
             flyConn = RunService.Heartbeat:Connect(function()
                 if not flying then return end
                 local hrp = safeChar():FindFirstChild("HumanoidRootPart")
-                if not hrp then return end
-                local target = getWorldPoint()
-                if not target then
-                    flyBV.Velocity = Vector3.zero
-                    return
-                end
-                local dir = target - hrp.Position
-                local dist = dir.Magnitude
-                if dist > 1.2 then
-                    local v = dir.Unit * flySpeed
+                local hum = safeChar():FindFirstChildOfClass("Humanoid")
+                if not hrp or not hum then return end
+                local moveDir = hum.MoveDirection
+                if moveDir.Magnitude > 0 then
+                    -- moveDir already in world-space relative to character facing
+                    -- we will use it directly so joystick controls movement direction
+                    local v = moveDir.Unit * flySpeed
                     flyBV.Velocity = Vector3.new(v.X, v.Y, v.Z)
                 else
                     flyBV.Velocity = Vector3.zero
                 end
-                -- orient horizontally toward target (so character faces travel)
-                flyBG.CFrame = CFrame.new(hrp.Position, Vector3.new(target.X, hrp.Position.Y, target.Z))
-            end)
-
-            -- cleanup on stop: disconnect touchConn when fly stops
-            spawn(function()
-                while flying do task.wait(0.5) end
-                if touchConn then touchConn:Disconnect(); touchConn = nil end
+                -- keep orientation stable
+                flyBG.CFrame = hrp.CFrame
             end)
         end
     end)
@@ -429,7 +395,7 @@ local function initMain()
     end)
 
     -- ============================
-    -- Pull Selected (Elastic Rope 3D) - added to menu
+    -- Pull Selected (Elastic Rope 3D) - ***DI-GANTI DENGAN VERSI VISUAL PULL***
     -- ============================
     createButton("Tarik Tali (3D)", function()
         if not selected then return end
@@ -445,20 +411,13 @@ local function initMain()
         -- safety: avoid stacking
         if thrp:FindFirstChild("FattanElasticRope_Att2") then return end
 
+        -- attachments
         local att1 = Instance.new("Attachment", myhrp)
         att1.Name = "FattanElasticRope_Att1"
         local att2 = Instance.new("Attachment", thrp)
         att2.Name = "FattanElasticRope_Att2"
 
-        local spring = Instance.new("SpringConstraint", myhrp)
-        spring.Name = "FattanElasticRope_Spring"
-        spring.Attachment0 = att1
-        spring.Attachment1 = att2
-        spring.FreeLength = (myhrp.Position - thrp.Position).Magnitude
-        spring.Stiffness = 220
-        spring.Damping = 6
-        spring.Parent = myhrp
-
+        -- beam visual (keep beam look similar to original)
         local ropeBeam = Instance.new("Beam", myhrp)
         ropeBeam.Name = "FattanElasticRope_Beam"
         ropeBeam.Attachment0 = att1
@@ -473,26 +432,48 @@ local function initMain()
         ropeBeam.Color = ColorSequence.new(Color3.fromRGB(139,69,19))
         ropeBeam.Parent = myhrp
 
+        -- make rope appear curved initially
         ropeBeam.CurveSize0 = math.clamp((myhrp.Position - thrp.Position).Magnitude / 30, 0, 1.5)
         ropeBeam.CurveSize1 = ropeBeam.CurveSize0 * 0.6
 
+        -- BodyPosition buat fake tarik (client-side)
+        local bp = Instance.new("BodyPosition", thrp)
+        bp.Name = "FattanElasticRope_BP"
+        bp.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+        bp.P = 3000
+        bp.D = 200
+        bp.Position = thrp.Position
+
+        -- connector: update beam curve & apply fake pulling
         local beamConn
         beamConn = RunService.Heartbeat:Connect(function()
-            if not att1.Parent or not att2.Parent or not spring.Parent then
+            if not att1.Parent or not att2.Parent or not bp.Parent then
                 if beamConn then beamConn:Disconnect(); beamConn = nil end
                 return
             end
+            -- update curve based on current distance
             local dist = (att1.WorldPosition - att2.WorldPosition).Magnitude
             local curve = math.clamp(1.5 - (dist/60), 0, 1.5)
             ropeBeam.CurveSize0 = curve
             ropeBeam.CurveSize1 = curve * 0.6
+
+            -- fake elastic pull: bring target closer but keep min distance
+            local dir = myhrp.Position - thrp.Position
+            local d = dir.Magnitude
+            local minDistance = 6 -- minimal jarak agar tidak nempel
+            if d > minDistance then
+                -- set target position to be minDistance away from player
+                bp.Position = myhrp.Position - dir.Unit * minDistance
+            else
+                bp.Position = thrp.Position
+            end
         end)
 
         local function clean()
             pcall(function()
                 if beamConn then beamConn:Disconnect(); beamConn = nil end
                 if ropeBeam and ropeBeam.Parent then ropeBeam:Destroy() end
-                if spring and spring.Parent then spring:Destroy() end
+                if bp and bp.Parent then bp:Destroy() end
                 if att1 and att1.Parent then att1:Destroy() end
                 if att2 and att2.Parent then att2:Destroy() end
             end)
