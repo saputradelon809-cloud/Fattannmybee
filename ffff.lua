@@ -1,343 +1,277 @@
--- FATTAN HUB FINAL
+-- 🌀 FATTAN HUB FINAL STABLE (ALL-IN-ONE GUI) 🌀
 -- Password: fattanhubGG
+-- Owner check: FATTANMYBEE = OWNER 👑👑, selain itu MEMBER 👑
 
-local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+local LocalPlayer = Players.LocalPlayer
 
-------------------------------------------------
--- Helper
-------------------------------------------------
-local function safeChar()
+if not LocalPlayer then
+    LocalPlayer = Players.PlayerAdded:Wait()
+end
+
+local function getChar()
     return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 end
 
-------------------------------------------------
--- LOGIN UI
-------------------------------------------------
+-- ============ LOGIN ============
 local function createLogin(onSuccess)
     local loginGui = Instance.new("ScreenGui", CoreGui)
     loginGui.Name = "FattanLogin"
+    loginGui.ResetOnSpawn = false
 
     local frame = Instance.new("Frame", loginGui)
-    frame.Size = UDim2.new(0, 300, 0, 150)
-    frame.Position = UDim2.new(0.5, -150, 0.5, -75)
-    frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+    frame.Size = UDim2.new(0, 280, 0, 150)
+    frame.Position = UDim2.new(0.5, -140, 0.5, -75)
+    frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+    frame.AnchorPoint = Vector2.new(0.5,0.5)
 
     local title = Instance.new("TextLabel", frame)
     title.Size = UDim2.new(1,0,0,36)
+    title.BackgroundTransparency = 1
     title.Text = "🔒 FattanHub Login"
     title.Font = Enum.Font.GothamBold
     title.TextSize = 18
     title.TextColor3 = Color3.new(1,1,1)
 
     local box = Instance.new("TextBox", frame)
-    box.Size = UDim2.new(0.8,0,0,32)
-    box.Position = UDim2.new(0.1,0,0,50)
+    box.Size = UDim2.new(0.84,0,0,32)
+    box.Position = UDim2.new(0.08,0,0,52)
     box.PlaceholderText = "Masukkan password..."
     box.Text = ""
     box.Font = Enum.Font.Gotham
     box.TextSize = 16
     box.TextColor3 = Color3.new(1,1,1)
-    box.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    box.BackgroundColor3 = Color3.fromRGB(35,35,35)
+
+    local status = Instance.new("TextLabel", frame)
+    status.Size = UDim2.new(1,0,0,22)
+    status.Position = UDim2.new(0,0,0,92)
+    status.BackgroundTransparency = 1
+    status.Text = ""
+    status.Font = Enum.Font.SourceSans
+    status.TextSize = 14
+    status.TextColor3 = Color3.fromRGB(200,200,200)
 
     local btn = Instance.new("TextButton", frame)
     btn.Size = UDim2.new(0.5,0,0,32)
-    btn.Position = UDim2.new(0.25,0,0,100)
+    btn.Position = UDim2.new(0.25,0,0,114)
     btn.Text = "Login"
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 16
     btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.TextColor3 = Color3.new(1,1,1)
 
-    local correct = "fattanhubGG"
+    local correctPassword = "fattanhubGG"
     local function tryLogin()
-        if box.Text == correct then
+        if box.Text == correctPassword then
             loginGui:Destroy()
-            onSuccess()
+            pcall(onSuccess)
         else
             box.Text = ""
-            btn.Text = "❌ Salah!"
-            task.delay(1,function() btn.Text="Login" end)
+            status.Text = "❌ Password salah!"
+            task.delay(1.5, function() status.Text = "" end)
         end
     end
     btn.MouseButton1Click:Connect(tryLogin)
     box.FocusLost:Connect(function(enter) if enter then tryLogin() end end)
 end
 
-------------------------------------------------
--- MAIN GUI
-------------------------------------------------
+-- ============ MAIN GUI ============
 local function initMain()
-    -- Loading
-    local loading = Instance.new("ScreenGui", CoreGui)
-    local lf = Instance.new("Frame", loading)
-    lf.Size = UDim2.new(1,0,1,0)
-    lf.BackgroundColor3 = Color3.fromRGB(10,40,90)
-    local lbl = Instance.new("TextLabel", lf)
-    lbl.Size = UDim2.new(1,0,1,0)
-    lbl.Text = "FATTAN HUB"
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = 36
-    lbl.TextColor3 = Color3.new(1,1,1)
-    task.wait(1)
-    loading:Destroy()
+    local gui = Instance.new("ScreenGui", CoreGui)
+    gui.Name = "FattanHub"
+    gui.ResetOnSpawn = false
 
-    -- GUI
-    local screenGui = Instance.new("ScreenGui", CoreGui)
-    screenGui.Name = "FattanHub"
-
-    local main = Instance.new("Frame", screenGui)
-    main.Size = UDim2.new(0, 260, 0, 400)
-    main.Position = UDim2.new(0.35,0,0.2,0)
-    main.BackgroundColor3 = Color3.fromRGB(8,44,110)
+    local main = Instance.new("Frame", gui)
+    main.Size = UDim2.new(0, 240, 0, 320)
+    main.Position = UDim2.new(0.3,0,0.25,0)
+    main.BackgroundColor3 = Color3.fromRGB(15,40,90)
     main.Active = true
     main.Draggable = true
 
     local title = Instance.new("TextLabel", main)
-    title.Size = UDim2.new(1,0,0,36)
+    title.Size = UDim2.new(1,0,0,34)
     title.BackgroundColor3 = Color3.fromRGB(4,110,200)
     title.Font = Enum.Font.GothamBold
-    title.TextSize = 20
+    title.TextSize = 18
     title.TextColor3 = Color3.new(1,1,1)
     if LocalPlayer.Name == "FATTANMYBEE" then
-        title.Text = "OWNER 👑👑"
+        title.Text = "OWNER 👑👑 FattanHub"
     else
-        title.Text = "MEMBER 👑"
+        title.Text = "MEMBER 👑 FattanHub"
     end
 
-    -- tombol Up/Down
-    local upBtn = Instance.new("TextButton", main)
-    upBtn.Size = UDim2.new(0.5,-4,0,30)
-    upBtn.Position = UDim2.new(0,2,0,40)
-    upBtn.Text = "Up (Ringkas)"
-    upBtn.Font = Enum.Font.SourceSansBold
-    upBtn.TextSize = 16
-    upBtn.BackgroundColor3 = Color3.fromRGB(40,120,40)
+    local list = Instance.new("UIListLayout", main)
+    list.SortOrder = Enum.SortOrder.LayoutOrder
+    list.Padding = UDim.new(0,5)
 
-    local downBtn = Instance.new("TextButton", main)
-    downBtn.Size = UDim2.new(0.5,-4,0,30)
-    downBtn.Position = UDim2.new(0.5,2,0,40)
-    downBtn.Text = "Down (Lengkap)"
-    downBtn.Font = Enum.Font.SourceSansBold
-    downBtn.TextSize = 16
-    downBtn.BackgroundColor3 = Color3.fromRGB(160,40,40)
-
-    -- Container tombol
-    local list = Instance.new("ScrollingFrame", main)
-    list.Size = UDim2.new(1,-10,1,-80)
-    list.Position = UDim2.new(0,5,0,80)
-    list.BackgroundTransparency = 1
-    list.ScrollBarThickness = 4
-    local layout = Instance.new("UIListLayout", list)
-    layout.Padding = UDim.new(0,4)
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-
-    ------------------------------------------------
-    -- Tombol helper
-    ------------------------------------------------
-    local function createButton(txt,callback)
-        local b = Instance.new("TextButton", list)
-        b.Size = UDim2.new(1,-6,0,32)
-        b.Text = txt
-        b.Font = Enum.Font.SourceSansBold
-        b.TextSize = 16
-        b.BackgroundColor3 = Color3.fromRGB(40,100,180)
+    local function createButton(text, func)
+        local b = Instance.new("TextButton", main)
+        b.Size = UDim2.new(1,-10,0,28)
+        b.BackgroundColor3 = Color3.fromRGB(10,95,180)
+        b.Text = text
+        b.Font = Enum.Font.GothamBold
+        b.TextSize = 14
         b.TextColor3 = Color3.new(1,1,1)
-        b.MouseButton1Click:Connect(function() pcall(callback) end)
+        b.MouseButton1Click:Connect(func)
         return b
     end
 
-    ------------------------------------------------
-    -- Semua Fitur
-    ------------------------------------------------
-    -- Fly
-    local flying=false
-    local bv,bg,conn
-    local flySpeed=80
-    local upHold,downHold=false,false
-    local vSpeed=60
+    -- MODE SWITCH
+    local compact = true
+    local btnUpDown = createButton("▼ Lengkap", function()
+        compact = not compact
+        if compact then
+            btnUpDown.Text = "▼ Lengkap"
+        else
+            btnUpDown.Text = "▲ Ringkas"
+        end
+        for _,c in ipairs(main:GetChildren()) do
+            if c:IsA("TextButton") and c ~= btnUpDown then
+                c.Visible = not compact or (c.Text == "Fly" or c.Text == "ESP" or c.Text == "Teleport")
+            end
+        end
+    end)
+
+    -- ========== FLY ==========
+    local flying=false; local bv; local bg; local conn
+    local speed=80; local upHold=false; local downHold=false
     local function startFly()
         if flying then return end
         flying=true
-        local ch=safeChar()
-        local hrp=ch:WaitForChild("HumanoidRootPart")
-        local hum=ch:FindFirstChildOfClass("Humanoid")
-        if hum then hum.PlatformStand=true end
+        local hrp=getChar():WaitForChild("HumanoidRootPart")
         bv=Instance.new("BodyVelocity",hrp)
         bv.MaxForce=Vector3.new(9e9,9e9,9e9)
-        bv.Velocity=Vector3.zero
         bg=Instance.new("BodyGyro",hrp)
         bg.MaxTorque=Vector3.new(9e9,9e9,9e9)
-        bg.CFrame=hrp.CFrame
         conn=RunService.Heartbeat:Connect(function()
             if not flying then return end
-            local move=hum.MoveDirection
-            local vx,vy,vz=0,0,0
-            if move.Magnitude>0 then
-                local v=move.Unit*flySpeed
-                vx,vy,vz=v.X,v.Y,v.Z
-            end
-            if upHold then vy=vSpeed elseif downHold then vy=-vSpeed end
-            bv.Velocity=Vector3.new(vx,vy,vz)
+            local hum=getChar():FindFirstChildOfClass("Humanoid")
+            local move=hum.MoveDirection*speed
+            local y=0;if upHold then y=60 elseif downHold then y=-60 end
+            bv.Velocity=Vector3.new(move.X,y,move.Z)
             bg.CFrame=hrp.CFrame
         end)
     end
     local function stopFly()
-        flying=false
-        if conn then conn:Disconnect() end
-        if bv then bv:Destroy() end
-        if bg then bg:Destroy() end
-        local hum=safeChar():FindFirstChildOfClass("Humanoid")
-        if hum then hum.PlatformStand=false end
+        flying=false;if conn then conn:Disconnect() end
+        if bv then bv:Destroy() end;if bg then bg:Destroy() end
     end
-    createButton("Fly (Toggle)",function() if flying then stopFly() else startFly() end end)
+    createButton("Fly", function() if flying then stopFly() else startFly() end end)
+    createButton("Fly Up", function() upHold=not upHold end)
+    createButton("Fly Down", function() downHold=not downHold end)
+    createButton("Speed +", function() speed=speed+10 end)
+    createButton("Speed -", function() speed=math.max(10,speed-10) end)
 
-    -- ESP
-    local esp=false
-    local function addESP(p)
-        if not p.Character then return end
-        if p.Character:FindFirstChild("FattanESP") then return end
-        local h=p.Character:FindFirstChild("HumanoidRootPart")
-        if not h then return end
-        local hl=Instance.new("Highlight",p.Character)
-        hl.Name="FattanESP"
-        hl.FillColor=Color3.fromRGB(0,255,255)
-    end
-    local function remESP(p)
-        if p.Character and p.Character:FindFirstChild("FattanESP") then
-            p.Character.FattanESP:Destroy()
-        end
-    end
-    createButton("ESP Toggle",function()
-        esp=not esp
-        for _,pl in pairs(Players:GetPlayers()) do
-            if pl~=LocalPlayer then
-                if esp then addESP(pl) else remESP(pl) end
-            end
-        end
-    end)
-    Players.PlayerAdded:Connect(function(p) p.CharacterAdded:Connect(function() task.wait(0.5) if esp then addESP(p) end end) end)
-
-    -- Teleport + Freeze
-    local selected=nil
-    createButton("Pilih Player Random",function()
-        for _,p in pairs(Players:GetPlayers()) do
-            if p~=LocalPlayer then selected=p break end
-        end
-    end)
-    createButton("Teleport ke Selected",function()
-        if selected and selected.Character and selected.Character:FindFirstChild("HumanoidRootPart") then
-            local hrp=safeChar():WaitForChild("HumanoidRootPart")
-            hrp.CFrame=selected.Character.HumanoidRootPart.CFrame+Vector3.new(2,0,0)
-        end
-    end)
-    createButton("Freeze Selected",function()
-        if not selected or not selected.Character then return end
-        local hum=selected.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.WalkSpeed=0 hum.JumpPower=0
-            task.delay(5,function() hum.WalkSpeed=16 hum.JumpPower=50 end)
-        end
-    end)
-
-    -- Rope
-    local rope={}
-    createButton("Tarik Tali Selected",function()
-        if not selected or rope[selected] then return end
-        local me=safeChar():FindFirstChild("HumanoidRootPart")
-        local tar=selected.Character and selected.Character:FindFirstChild("HumanoidRootPart")
-        if not me or not tar then return end
-        local att1=Instance.new("Attachment",me)
-        local att2=Instance.new("Attachment",tar)
-        local bm=Instance.new("Beam",me)
-        bm.Attachment0=att1 bm.Attachment1=att2
-        bm.Width0=0.2 bm.Width1=0.2
-        bm.Color=ColorSequence.new(Color3.new(1,0,0))
-        local conn=RunService.RenderStepped:Connect(function()
-            if (tar.Position-me.Position).Magnitude>6 then
-                tar.CFrame=tar.CFrame:Lerp(CFrame.new(me.Position),0.1)
-            end
-        end)
-        rope[selected]={bm,att1,att2,conn}
-    end)
-    createButton("Stop Rope",function()
-        if selected and rope[selected] then
-            for _,v in pairs(rope[selected]) do
-                if typeof(v)=="RBXScriptConnection" then v:Disconnect()
-                elseif typeof(v)=="Instance" and v.Parent then v:Destroy() end
-            end
-            rope[selected]=nil
-        end
-    end)
-
-    -- Delete Parts
-    local scanning=false
-    createButton("Scan Parts",function()
-        scanning=not scanning
-        if scanning then
-            for _,v in ipairs(workspace:GetDescendants()) do
-                if v:IsA("BasePart") and not v.Anchored then v.Color=Color3.new(1,0,0) end
-            end
-        else
-            for _,v in ipairs(workspace:GetDescendants()) do
-                if v:IsA("BasePart") then v.Color=Color3.fromRGB(255,255,255) end
-            end
-        end
-    end)
-
-    -- WalkFling Invisible
-    local fling=false
-    local flingConn,flingPart,flingBV
-    local function startFling()
-        if fling then return end
-        fling=true
-        local hrp=safeChar():WaitForChild("HumanoidRootPart")
-        flingPart=Instance.new("Part",workspace)
-        flingPart.Size=Vector3.new(20,20,20)
-        flingPart.Transparency=1
-        local weld=Instance.new("WeldConstraint",flingPart)
-        weld.Part0=flingPart weld.Part1=hrp
-        flingBV=Instance.new("BodyVelocity",flingPart)
-        flingBV.MaxForce=Vector3.new(1e9,1e9,1e9)
-        flingConn=RunService.Heartbeat:Connect(function()
-            flingBV.Velocity=hrp.CFrame.LookVector*160
-        end)
-    end
-    local function stopFling()
-        fling=false
-        if flingConn then flingConn:Disconnect() end
-        if flingPart then flingPart:Destroy() end
-    end
-    createButton("WalkFling Toggle",function() if fling then stopFling() else startFling() end end)
-
-    -- Speed & Jump
-    local run=16
-    local jump=50
-    createButton("Run +",function() run=run+5 local h=safeChar():FindFirstChildOfClass("Humanoid") if h then h.WalkSpeed=run end end)
-    createButton("Jump +",function() jump=jump+10 local h=safeChar():FindFirstChildOfClass("Humanoid") if h then h.JumpPower=jump end end)
-    createButton("Reset Speed/Jump",function() run=16 jump=50 local h=safeChar():FindFirstChildOfClass("Humanoid") if h then h.WalkSpeed=run h.JumpPower=jump end end)
-
-    ------------------------------------------------
-    -- Mode Ringkas/Lengkap
-    ------------------------------------------------
-    local function setMode(ringkas)
-        for _,b in pairs(list:GetChildren()) do
-            if b:IsA("TextButton") then
-                if ringkas then
-                    b.Visible = (b.Text=="Fly (Toggle)" or b.Text=="ESP Toggle" or b.Text=="Teleport ke Selected")
+    -- ========== ESP ==========
+    local espOn=false
+    local function toggleESP()
+        espOn=not espOn
+        for _,p in ipairs(Players:GetPlayers()) do
+            if p~=LocalPlayer then
+                if espOn then
+                    if p.Character and not p.Character:FindFirstChild("FattanESP") then
+                        local h=Instance.new("Highlight",p.Character);h.Name="FattanESP";h.FillColor=Color3.fromRGB(0,255,255)
+                        local head=p.Character:FindFirstChild("Head")
+                        if head and not head:FindFirstChild("FattanName") then
+                            local g=Instance.new("BillboardGui",head);g.Name="FattanName";g.Size=UDim2.new(0,100,0,20);g.StudsOffset=Vector3.new(0,2,0);g.AlwaysOnTop=true
+                            local l=Instance.new("TextLabel",g);l.Size=UDim2.new(1,0,1,0);l.BackgroundTransparency=1;l.Text=p.Name;l.TextSize=14;l.TextColor3=Color3.new(1,1,1)
+                        end
+                    end
                 else
-                    b.Visible = true
+                    if p.Character then
+                        local h=p.Character:FindFirstChild("FattanESP");if h then h:Destroy() end
+                        local head=p.Character:FindFirstChild("Head");if head and head:FindFirstChild("FattanName") then head.FattanName:Destroy() end
+                    end
                 end
             end
         end
     end
-    setMode(true)
-    upBtn.MouseButton1Click:Connect(function() setMode(true) end)
-    downBtn.MouseButton1Click:Connect(function() setMode(false) end)
+    createButton("ESP", toggleESP)
+
+    -- ========== TELEPORT ==========
+    local selected
+    createButton("Teleport", function()
+        if selected then
+            local p=Players:FindFirstChild(selected)
+            if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                getChar().HumanoidRootPart.CFrame=p.Character.HumanoidRootPart.CFrame+Vector3.new(2,0,0)
+            end
+        end
+    end)
+
+    -- ========== FREEZE ==========
+    local frozen={}
+    createButton("Freeze Player", function()
+        if not selected then return end
+        local p=Players:FindFirstChild(selected);if not p or not p.Character then return end
+        local hum=p.Character:FindFirstChildOfClass("Humanoid");if not hum then return end
+        if frozen[p] then
+            hum.WalkSpeed=16;hum.JumpPower=50;frozen[p]=nil
+        else
+            hum.WalkSpeed=0;hum.JumpPower=0;frozen[p]=true
+        end
+    end)
+
+    -- ========== ROPE ==========
+    local ropeActive={}
+    createButton("Rope", function()
+        if not selected then return end
+        local p=Players:FindFirstChild(selected)
+        if ropeActive[p] then ropeActive[p]:Destroy();ropeActive[p]=nil
+        else
+            if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local att1=Instance.new("Attachment",getChar().HumanoidRootPart)
+                local att2=Instance.new("Attachment",p.Character.HumanoidRootPart)
+                local beam=Instance.new("Beam",att1)
+                beam.Attachment0=att1;beam.Attachment1=att2;beam.Width0=0.2;beam.Width1=0.2
+                ropeActive[p]=beam
+            end
+        end
+    end)
+
+    -- ========== WALKFLING ==========
+    local flingOn=false;local flingConn
+    createButton("WalkFling", function()
+        if flingOn then flingOn=false;if flingConn then flingConn:Disconnect() end
+        else
+            flingOn=true
+            flingConn=RunService.Heartbeat:Connect(function()
+                local hrp=getChar():FindFirstChild("HumanoidRootPart")
+                if hrp then hrp.Velocity=hrp.CFrame.LookVector*200 end
+            end)
+        end
+    end)
+
+    -- ========== NOCLIP ==========
+    local noclip=false
+    createButton("Noclip", function()
+        noclip=not noclip
+        RunService.Stepped:Connect(function()
+            if noclip then
+                for _,v in pairs(getChar():GetDescendants()) do
+                    if v:IsA("BasePart") then v.CanCollide=false end
+                end
+            end
+        end)
+    end)
+
+    -- ========== GOD MODE ==========
+    local god=false
+    createButton("God Mode", function()
+        god=not god;if god then getChar():WaitForChild("Humanoid").Health=math.huge end
+    end)
+
+    -- ========== SPEED / JUMP ==========
+    local runspeed=16;jump=50
+    createButton("Run +", function() runspeed=runspeed+5;getChar():FindFirstChildOfClass("Humanoid").WalkSpeed=runspeed end)
+    createButton("Run -", function() runspeed=math.max(0,runspeed-5);getChar():FindFirstChildOfClass("Humanoid").WalkSpeed=runspeed end)
+    createButton("Jump +", function() jump=jump+5;local h=getChar():FindFirstChildOfClass("Humanoid");h.UseJumpPower=true;h.JumpPower=jump end)
+    createButton("Jump -", function() jump=math.max(0,jump-5);local h=getChar():FindFirstChildOfClass("Humanoid");h.UseJumpPower=true;h.JumpPower=jump end)
+
 end
 
--- Jalankan
+-- Run
 createLogin(initMain)
