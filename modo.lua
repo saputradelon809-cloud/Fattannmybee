@@ -180,12 +180,12 @@ local function initMain()
     local mouse = LocalPlayer:GetMouse()
 
     -- ============================
-    -- Fly (Joystick Mode) -> ***DI-GANTI DENGAN VERSI JOYSTICK*** 
+    -- Fly (Joystick Mode) -> ***DI-GANTI DENGAN VERSI JOYSTICK + UP/DOWN + PANEL DRAGGABLE*** 
     -- ============================
     local flying = false
     local flyBV, flyBG, flyConn
     local flySpeed = 80 -- default
-    -- UI controls for fly speed
+    -- UI controls for fly speed (kept in main frame)
     local flyRow = Instance.new("Frame", mainFrame)
     flyRow.Size = UDim2.new(1,-12,0,34)
     flyRow.BackgroundTransparency = 1
@@ -216,57 +216,144 @@ local function initMain()
         setFlySpeed(flyValue.Text)
     end)
 
-    createButton("Fly (Joystick Mode) - Toggle", function()
-        if flying then
-            -- stop fly
-            flying = false
-            if flyConn then flyConn:Disconnect(); flyConn = nil end
-            if flyBV and flyBV.Parent then flyBV:Destroy() end
-            if flyBG and flyBG.Parent then flyBG:Destroy() end
-            flyBV, flyBG = nil, nil
-            -- restore humanoid
-            local ch = safeChar()
-            local hum = ch:FindFirstChildOfClass("Humanoid")
-            if hum then pcall(function() hum.PlatformStand = false end) end
-        else
-            -- start fly (joystick / WASD control)
-            flying = true
-            local ch = safeChar()
-            local hrp = ch:WaitForChild("HumanoidRootPart")
-            local hum = ch:FindFirstChildOfClass("Humanoid")
-            if hum then pcall(function() hum.PlatformStand = true end) end
+    -- create a draggable Fly control panel (separate from main menu)
+    local flyPanel = Instance.new("Frame")
+    flyPanel.Name = "FlyPanel"
+    flyPanel.Size = UDim2.new(0,180,0,140)
+    flyPanel.Position = UDim2.new(0.02, 0, 0.65, 0)
+    flyPanel.BackgroundColor3 = Color3.fromRGB(12, 40, 90)
+    flyPanel.Active = true
+    flyPanel.Draggable = true
+    flyPanel.Parent = screenGui
 
-            flyBV = Instance.new("BodyVelocity")
-            flyBV.MaxForce = Vector3.new(9e9,9e9,9e9)
-            flyBV.P = 1250
-            flyBV.Velocity = Vector3.zero
-            flyBV.Parent = hrp
+    local fpTitle = Instance.new("TextLabel", flyPanel)
+    fpTitle.Size = UDim2.new(1,0,0,26)
+    fpTitle.Position = UDim2.new(0,0,0,0)
+    fpTitle.BackgroundColor3 = Color3.fromRGB(6, 90, 170)
+    fpTitle.Text = "Fly Control"
+    fpTitle.Font = Enum.Font.GothamBold
+    fpTitle.TextSize = 14
+    fpTitle.TextColor3 = Color3.new(1,1,1)
 
-            flyBG = Instance.new("BodyGyro")
-            flyBG.MaxTorque = Vector3.new(9e9,9e9,9e9)
-            flyBG.P = 5000
+    -- Fly toggle inside panel
+    local fpToggle = Instance.new("TextButton", flyPanel)
+    fpToggle.Size = UDim2.new(0.9,0,0,28)
+    fpToggle.Position = UDim2.new(0.05,0,0,34)
+    fpToggle.Text = "Toggle Fly"
+    fpToggle.Font = Enum.Font.SourceSansBold
+    fpToggle.TextSize = 14
+    fpToggle.BackgroundColor3 = Color3.fromRGB(40,100,180)
+    fpToggle.TextColor3 = Color3.new(1,1,1)
+
+    -- Up / Down buttons
+    local upBtn = Instance.new("TextButton", flyPanel)
+    upBtn.Size = UDim2.new(0.4,0,0,28)
+    upBtn.Position = UDim2.new(0.05,0,0,70)
+    upBtn.Text = "Up"
+    upBtn.Font = Enum.Font.SourceSansBold
+    upBtn.TextSize = 14
+    upBtn.BackgroundColor3 = Color3.fromRGB(40,180,100)
+    upBtn.TextColor3 = Color3.new(1,1,1)
+
+    local downBtn = Instance.new("TextButton", flyPanel)
+    downBtn.Size = UDim2.new(0.4,0,0,28)
+    downBtn.Position = UDim2.new(0.55,0,0,70)
+    downBtn.Text = "Down"
+    downBtn.Font = Enum.Font.SourceSansBold
+    downBtn.TextSize = 14
+    downBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
+    downBtn.TextColor3 = Color3.new(1,1,1)
+
+    -- Speed label inside panel (mirror)
+    local spLbl = Instance.new("TextLabel", flyPanel)
+    spLbl.Size = UDim2.new(0.9,0,0,20)
+    spLbl.Position = UDim2.new(0.05,0,0,104)
+    spLbl.BackgroundTransparency = 1
+    spLbl.Text = "Speed: "..tostring(flySpeed)
+    spLbl.Font = Enum.Font.SourceSans
+    spLbl.TextSize = 14
+    spLbl.TextColor3 = Color3.new(1,1,1)
+
+    -- Update spLbl when flySpeed changes from main UI
+    flyValue.Changed:Connect(function()
+        spLbl.Text = "Speed: "..tostring(flySpeed)
+    end)
+
+    -- up/down behavior: apply small vertical velocity while pressed
+    local upHold = false
+    local downHold = false
+    local verticalSpeed = 60 -- up/down speed when hold
+
+    upBtn.MouseButton1Down:Connect(function() upHold = true end)
+    upBtn.MouseButton1Up:Connect(function() upHold = false end)
+    downBtn.MouseButton1Down:Connect(function() downHold = true end)
+    downBtn.MouseButton1Up:Connect(function() downHold = false end)
+
+    -- Toggle button uses same flying logic as main toggle (keep both synced)
+    local function startFly()
+        if flying then return end
+        flying = true
+        local ch = safeChar()
+        local hrp = ch:WaitForChild("HumanoidRootPart")
+        local hum = ch:FindFirstChildOfClass("Humanoid")
+        if hum then pcall(function() hum.PlatformStand = true end) end
+
+        flyBV = Instance.new("BodyVelocity")
+        flyBV.MaxForce = Vector3.new(9e9,9e9,9e9)
+        flyBV.P = 1250
+        flyBV.Velocity = Vector3.zero
+        flyBV.Parent = hrp
+
+        flyBG = Instance.new("BodyGyro")
+        flyBG.MaxTorque = Vector3.new(9e9,9e9,9e9)
+        flyBG.P = 5000
+        flyBG.CFrame = hrp.CFrame
+        flyBG.Parent = hrp
+
+        flyConn = RunService.Heartbeat:Connect(function()
+            if not flying then return end
+            local hrp = safeChar():FindFirstChild("HumanoidRootPart")
+            local hum = safeChar():FindFirstChildOfClass("Humanoid")
+            if not hrp or not hum then return end
+            -- horizontal move by MoveDirection (joystick/WASD)
+            local moveDir = hum.MoveDirection
+            local vx, vy, vz = 0, 0, 0
+            if moveDir.Magnitude > 0 then
+                local v = moveDir.Unit * flySpeed
+                vx, vy, vz = v.X, v.Y, v.Z
+            end
+            -- vertical component from up/down hold
+            if upHold then
+                vy = verticalSpeed
+            elseif downHold then
+                vy = -verticalSpeed
+            end
+            flyBV.Velocity = Vector3.new(vx, vy, vz)
+            -- keep orientation stable
             flyBG.CFrame = hrp.CFrame
-            flyBG.Parent = hrp
+        end)
+    end
 
-            -- Use MoveDirection (joystick/WASD) for movement
-            flyConn = RunService.Heartbeat:Connect(function()
-                if not flying then return end
-                local hrp = safeChar():FindFirstChild("HumanoidRootPart")
-                local hum = safeChar():FindFirstChildOfClass("Humanoid")
-                if not hrp or not hum then return end
-                local moveDir = hum.MoveDirection
-                if moveDir.Magnitude > 0 then
-                    -- moveDir already in world-space relative to character facing
-                    -- we will use it directly so joystick controls movement direction
-                    local v = moveDir.Unit * flySpeed
-                    flyBV.Velocity = Vector3.new(v.X, v.Y, v.Z)
-                else
-                    flyBV.Velocity = Vector3.zero
-                end
-                -- keep orientation stable
-                flyBG.CFrame = hrp.CFrame
-            end)
-        end
+    local function stopFly()
+        if not flying then return end
+        flying = false
+        if flyConn then flyConn:Disconnect(); flyConn = nil end
+        if flyBV and flyBV.Parent then flyBV:Destroy() end
+        if flyBG and flyBG.Parent then flyBG:Destroy() end
+        flyBV, flyBG = nil, nil
+        local ch = safeChar()
+        local hum = ch:FindFirstChildOfClass("Humanoid")
+        if hum then pcall(function() hum.PlatformStand = false end) end
+    end
+
+    -- make toggle clickable from panel and also createButton in main menu still exists below
+    fpToggle.MouseButton1Click:Connect(function()
+        if flying then stopFly() else startFly() end
+    end)
+
+    -- also allow clicking main menu fly button to use same start/stop
+    createButton("Fly (Joystick Mode) - Toggle", function()
+        if flying then stopFly() else startFly() end
     end)
 
     -- ============================
@@ -395,7 +482,7 @@ local function initMain()
     end)
 
     -- ============================
-    -- Pull Selected (Elastic Rope 3D) - ***DI-GANTI DENGAN VERSI VISUAL PULL***
+    -- Pull Selected (Elastic Rope 3D) - ***DI-GANTI DENGAN VERSI VISUAL PULL (RenderStepped + Lerp)***
     -- ============================
     createButton("Tarik Tali (3D)", function()
         if not selected then return end
@@ -417,7 +504,7 @@ local function initMain()
         local att2 = Instance.new("Attachment", thrp)
         att2.Name = "FattanElasticRope_Att2"
 
-        -- beam visual (keep beam look similar to original)
+        -- Beam visual (kept similar)
         local ropeBeam = Instance.new("Beam", myhrp)
         ropeBeam.Name = "FattanElasticRope_Beam"
         ropeBeam.Attachment0 = att1
@@ -427,53 +514,50 @@ local function initMain()
         ropeBeam.Width1 = 0.18
         ropeBeam.Texture = ""
         ropeBeam.TextureMode = Enum.TextureMode.Stretch
-        ropeBeam.Segments = 10
+        ropeBeam.Segments = 15
         ropeBeam.Transparency = NumberSequence.new(0)
         ropeBeam.Color = ColorSequence.new(Color3.fromRGB(139,69,19))
         ropeBeam.Parent = myhrp
 
-        -- make rope appear curved initially
+        -- initial curve
         ropeBeam.CurveSize0 = math.clamp((myhrp.Position - thrp.Position).Magnitude / 30, 0, 1.5)
         ropeBeam.CurveSize1 = ropeBeam.CurveSize0 * 0.6
 
-        -- BodyPosition buat fake tarik (client-side)
-        local bp = Instance.new("BodyPosition", thrp)
-        bp.Name = "FattanElasticRope_BP"
-        bp.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-        bp.P = 3000
-        bp.D = 200
-        bp.Position = thrp.Position
-
-        -- connector: update beam curve & apply fake pulling
-        local beamConn
-        beamConn = RunService.Heartbeat:Connect(function()
-            if not att1.Parent or not att2.Parent or not bp.Parent then
-                if beamConn then beamConn:Disconnect(); beamConn = nil end
+        -- Visual pull: use RenderStepped for smooth per-frame visual movement (client-side only)
+        local minDistance = 6 -- minimal jarak agar tidak nempel
+        local pulling = true
+        local rsConn
+        rsConn = RunService.RenderStepped:Connect(function(dt)
+            if not pulling then return end
+            if not att1.Parent or not att2.Parent or not ropeBeam.Parent then
+                if rsConn then rsConn:Disconnect(); rsConn = nil end
                 return
             end
+
             -- update curve based on current distance
             local dist = (att1.WorldPosition - att2.WorldPosition).Magnitude
             local curve = math.clamp(1.5 - (dist/60), 0, 1.5)
             ropeBeam.CurveSize0 = curve
             ropeBeam.CurveSize1 = curve * 0.6
 
-            -- fake elastic pull: bring target closer but keep min distance
-            local dir = myhrp.Position - thrp.Position
-            local d = dir.Magnitude
-            local minDistance = 6 -- minimal jarak agar tidak nempel
-            if d > minDistance then
-                -- set target position to be minDistance away from player
-                bp.Position = myhrp.Position - dir.Unit * minDistance
-            else
-                bp.Position = thrp.Position
+            -- visual pull: move target HRP towards myhrp but keep minDistance
+            if thrp.Parent and myhrp.Parent then
+                local dir = myhrp.Position - thrp.Position
+                local d = dir.Magnitude
+                if d > minDistance then
+                    local targetPos = myhrp.Position - dir.Unit * minDistance
+                    -- smooth lerp for natural motion (0.12-0.2 smoothing)
+                    local newCFrame = thrp.CFrame:Lerp(CFrame.new(targetPos, targetPos + thrp.CFrame.LookVector), 0.15)
+                    thrp.CFrame = newCFrame
+                end
             end
         end)
 
         local function clean()
             pcall(function()
-                if beamConn then beamConn:Disconnect(); beamConn = nil end
+                pulling = false
+                if rsConn then rsConn:Disconnect(); rsConn = nil end
                 if ropeBeam and ropeBeam.Parent then ropeBeam:Destroy() end
-                if bp and bp.Parent then bp:Destroy() end
                 if att1 and att1.Parent then att1:Destroy() end
                 if att2 and att2.Parent then att2:Destroy() end
             end)
