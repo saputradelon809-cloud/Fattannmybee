@@ -17,7 +17,7 @@ if not LocalPlayer then LocalPlayer = Players.PlayerAdded:Wait() end
 -- Logo (ganti bila perlu)
 local logoAsset = "rbxassetid://6031068426"
 
--- Helper: karakter aman
+-- Helper: character safe
 local function safeChar()
     return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 end
@@ -388,19 +388,16 @@ local function initMain()
     downBtn.MouseButton1Up:Connect(function() downHold = false end)
 
     fpToggle.MouseButton1Click:Connect(function()
-        compactFlyBtn:CaptureFocus() -- keep consistency
-        -- re-use compact toggling logic
-        compactFlyBtn:Activate() -- not guaranteed in all executors; we'll duplicate logic to be safe
-        -- duplicate: trigger compact button logic
-        local success, err = pcall(function() compactFlyBtn.MouseButton1Click:Fire() end)
-        -- fallback: run the compact callback directly if available
+        -- reuse compact logic:
+        compactFlyBtn:CaptureFocus()
+        compactFlyBtn.MouseButton1Click:Wait()
     end)
 
     -- Add flyRow to fullFrame
     flyRow.Parent = fullFrame
 
     -- ================
-    -- ESP buttons already in compact & full
+    -- ESP
     -- ================
     local espEnabled = false
     local function addNameTag(p)
@@ -537,7 +534,6 @@ local function initMain()
         end
     end
 
-    -- central rope toggle function (accepts player object)
     local function ropeToggleForPlayer(targetPlayer)
         if not targetPlayer then return end
         if activeRope[targetPlayer] then
@@ -602,7 +598,6 @@ local function initMain()
 
         activeRope[targetPlayer] = {att1 = att1, att2 = att2, beam = ropeBeam, conn = conn, pulling = true, minDistance = minDistance}
 
-        -- cleanup when character removed or player removed
         local remCon
         remCon = targetPlayer.CharacterRemoving:Connect(function()
             cleanRopeForPlayer(targetPlayer)
@@ -624,7 +619,6 @@ local function initMain()
         ropeToggleForPlayer(pl)
     end)
 
-    -- stop all ropes button
     createButtonIn(fullFrame, "Stop All Ropes", function()
         for pl,_ in pairs(activeRope) do
             cleanRopeForPlayer(pl)
@@ -870,18 +864,13 @@ local function initMain()
         end
     end)
 
-    -- ================
-    -- Wire some button placements: put some important buttons into compact & full
-    -- ================
-    -- compact: Fly Toggle (already), Rope Toggle (already), ESP (already), WalkFling (already)
-    -- full: many buttons already added above
-    -- add some spacing filler in compact to look decent
+    -- filler to keep compact neat
     local filler = Instance.new("Frame", compactFrame)
-    filler.Size = UDim2.new(1,0,1, - (4*36 + 24)) -- try to fill leftover space
+    filler.Size = UDim2.new(1,0,1, - (4*36 + 24))
     filler.BackgroundTransparency = 1
 
-    -- initial state done
+    -- initial state ready
 end
 
--- Run: show login first, then initMain after correct password
+-- Run
 createLogin(initMain)
