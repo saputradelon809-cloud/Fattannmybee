@@ -1,6 +1,7 @@
 -- FATTAN HUB - FINAL ALL IN ONE (password + tap-fly + rope3D + invisible-fling + mobile tweaks)
 -- Password: fattanhubGG
 -- Paste to executor / LocalScript (must be allowed to create CoreGui elements)
+-- NOTE: Replace logoAsset with your uploaded Roblox decal asset id, e.g. "rbxassetid://1234567890"
 
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
@@ -10,6 +11,9 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+
+-- Gambar logo untuk ikon minimize (ganti dengan asset id milikmu)
+local logoAsset = "rbxassetid://6031068426" -- <-- ganti ini dengan asset logo kamu
 
 if not LocalPlayer then
     LocalPlayer = Players.PlayerAdded:Wait()
@@ -148,6 +152,56 @@ local function initMain()
     title.TextSize = 18
     title.TextColor3 = Color3.new(1,1,1)
     title.BackgroundTransparency = 0
+
+    -- minimize and exit buttons (top-right)
+    local exitBtn = Instance.new("TextButton", mainFrame)
+    exitBtn.Size = UDim2.new(0,26,0,22)
+    exitBtn.Position = UDim2.new(1,-30,0,6)
+    exitBtn.AnchorPoint = Vector2.new(0,0)
+    exitBtn.Text = "X"
+    exitBtn.Font = Enum.Font.SourceSansBold
+    exitBtn.TextSize = 18
+    exitBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
+    exitBtn.TextColor3 = Color3.new(1,1,1)
+
+    local minBtn = Instance.new("TextButton", mainFrame)
+    minBtn.Size = UDim2.new(0,26,0,22)
+    minBtn.Position = UDim2.new(1,-62,0,6)
+    minBtn.AnchorPoint = Vector2.new(0,0)
+    minBtn.Text = "—"
+    minBtn.Font = Enum.Font.SourceSansBold
+    minBtn.TextSize = 18
+    minBtn.BackgroundColor3 = Color3.fromRGB(180,180,60)
+    minBtn.TextColor3 = Color3.new(1,1,1)
+
+    -- create minimize icon (circular) hidden by default
+    local miniIcon = Instance.new("ImageButton", screenGui)
+    miniIcon.Name = "FattanMiniIcon"
+    miniIcon.Size = UDim2.new(0,54,0,54)
+    miniIcon.Position = UDim2.new(0.02,0,0.75,0)
+    miniIcon.BackgroundColor3 = Color3.fromRGB(8,44,110)
+    miniIcon.AutoButtonColor = true
+    miniIcon.Visible = false
+    miniIcon.Image = logoAsset
+    miniIcon.ImageRectOffset = Vector2.new(0,0)
+
+    -- minimize behavior
+    minBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = false
+        miniIcon.Visible = true
+    end)
+    -- restore behavior
+    miniIcon.MouseButton1Click:Connect(function()
+        mainFrame.Visible = true
+        miniIcon.Visible = false
+    end)
+
+    -- exit behavior
+    exitBtn.MouseButton1Click:Connect(function()
+        pcall(function()
+            if screenGui and screenGui.Parent then screenGui:Destroy() end
+        end)
+    end)
 
     local listLayout = Instance.new("UIListLayout", mainFrame)
     listLayout.Padding = UDim.new(0,6)
@@ -346,12 +400,10 @@ local function initMain()
         if hum then pcall(function() hum.PlatformStand = false end) end
     end
 
-    -- make toggle clickable from panel and also createButton in main menu still exists below
     fpToggle.MouseButton1Click:Connect(function()
         if flying then stopFly() else startFly() end
     end)
 
-    -- also allow clicking main menu fly button to use same start/stop
     createButton("Fly (Joystick Mode) - Toggle", function()
         if flying then stopFly() else startFly() end
     end)
@@ -482,12 +534,37 @@ local function initMain()
     end)
 
     -- ============================
-    -- Pull Selected (Elastic Rope 3D) - ***DI-GANTI DENGAN VERSI VISUAL PULL (RenderStepped + Lerp)***
+    -- Pull Selected (Elastic Rope 3D) -> TOGGLE ON/OFF (visual pull only)
     -- ============================
-    createButton("Tarik Tali (3D)", function()
+    -- We'll store active rope state per-target for safety.
+    local activeRope = {} -- [player] = {att1, att2, beam, conn}
+
+    local function cleanRopeForPlayer(player)
+        if not player then return end
+        local data = activeRope[player]
+        if data then
+            pcall(function()
+                if data.conn then data.conn:Disconnect(); data.conn = nil end
+                if data.beam and data.beam.Parent then data.beam:Destroy() end
+                if data.att1 and data.att1.Parent then data.att1:Destroy() end
+                if data.att2 and data.att2.Parent then data.att2:Destroy() end
+                activeRope[player] = nil
+            end)
+        end
+    end
+
+    -- Toggle function
+    createButton("Tarik Tali (3D) - Toggle", function()
         if not selected then return end
         local targetPlayer = Players:FindFirstChild(selected)
         if not targetPlayer then return end
+
+        -- if already active -> clean
+        if activeRope[targetPlayer] then
+            cleanRopeForPlayer(targetPlayer)
+            return
+        end
+
         local tchar = targetPlayer.Character
         local mychar = safeChar()
         if not tchar or not mychar then return end
@@ -495,7 +572,7 @@ local function initMain()
         local myhrp = mychar:FindFirstChild("HumanoidRootPart")
         if not thrp or not myhrp then return end
 
-        -- safety: avoid stacking
+        -- avoid duplicate
         if thrp:FindFirstChild("FattanElasticRope_Att2") then return end
 
         -- attachments
@@ -553,23 +630,29 @@ local function initMain()
             end
         end)
 
-        local function clean()
-            pcall(function()
-                pulling = false
-                if rsConn then rsConn:Disconnect(); rsConn = nil end
-                if ropeBeam and ropeBeam.Parent then ropeBeam:Destroy() end
-                if att1 and att1.Parent then att1:Destroy() end
-                if att2 and att2.Parent then att2:Destroy() end
-            end)
-        end
+        -- save into activeRope
+        activeRope[targetPlayer] = {
+            att1 = att1,
+            att2 = att2,
+            beam = ropeBeam,
+            conn = rsConn,
+            pulling = true,
+            minDistance = minDistance,
+        }
 
-        task.delay(12, function() clean() end)
-
-        local conRem
-        conRem = targetPlayer.CharacterRemoving:Connect(function()
-            clean()
-            if conRem then conRem:Disconnect(); conRem=nil end
+        -- cleanup when player leaves or dies
+        local charRemCon
+        charRemCon = targetPlayer.CharacterRemoving:Connect(function()
+            cleanRopeForPlayer(targetPlayer)
+            if charRemCon then charRemCon:Disconnect(); charRemCon=nil end
         end)
+    end)
+
+    -- Add a manual cleanup button (optional)
+    createButton("Stop All Ropes", function()
+        for pl,_ in pairs(activeRope) do
+            cleanRopeForPlayer(pl)
+        end
     end)
 
     -- ============================
@@ -787,7 +870,7 @@ local function initMain()
         if head:FindFirstChild("FattanOwner") then return end
         local bg = Instance.new("BillboardGui", head); bg.Name = "FattanOwner"; bg.Size = UDim2.new(0,110,0,30); bg.StudsOffset = Vector3.new(0,3,0); bg.AlwaysOnTop = true
         local img = Instance.new("ImageLabel", bg); img.Size = UDim2.new(0,28,0,28); img.Position = UDim2.new(0,4,0,0); img.BackgroundTransparency = 1
-        pcall(function() img.Image = "rbxassetid://6031068426" end)
+        pcall(function() img.Image = logoAsset end)
         local lbl = Instance.new("TextLabel", bg); lbl.Size = UDim2.new(1,0,1,0); lbl.BackgroundTransparency = 1; lbl.Text = " OWNER"; lbl.Font = Enum.Font.GothamBlack; lbl.TextColor3 = Color3.fromRGB(255,215,0); lbl.TextScaled = true; lbl.TextStrokeTransparency = 0.2
     end
     if LocalPlayer.Character then pcall(createOwnerCrown) end
