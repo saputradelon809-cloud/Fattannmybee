@@ -1,7 +1,9 @@
--- FATTAN HUB - FINAL ALL IN ONE (password + tap-fly + rope3D + invisible-fling + mobile tweaks)
+--=========================================================
+-- FATTAN HUB - FINAL ALL IN ONE (merged + extra features)
 -- Password: fattanhubGG
 -- Paste to executor / LocalScript (must be allowed to create CoreGui elements)
 -- NOTE: Replace logoAsset with your uploaded Roblox decal asset id, e.g. "rbxassetid://1234567890"
+--=========================================================
 
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
@@ -10,23 +12,33 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local Camera = Workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
+local TeleportService = game:GetService("TeleportService")
+local VirtualUser = game:GetService("VirtualUser")
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
--- Gambar logo untuk ikon minimize (ganti dengan asset id milikmu)
-local logoAsset = "rbxassetid://6031068426" -- <-- ganti ini dengan asset logo kamu
+-- Ganti dengan logo asset id mu jika perlu
+local logoAsset = "rbxassetid://6031068426"
 
-if not LocalPlayer then
-    LocalPlayer = Players.PlayerAdded:Wait()
-end
-
--- Helper: safe get character
-local function getChar()
+-- Small helper functions
+local function safeChar()
     return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 end
 
--- ===========
--- Login UI
--- ===========
+-- Notification helper
+local function notify(title, text)
+    local success, err = pcall(function()
+        game.StarterGui:SetCore("SendNotification", {
+            Title = title;
+            Text = text;
+            Duration = 3;
+        })
+    end)
+    -- ignore errors silently
+end
+
+-- ========================================================
+-- LOGIN UI (compact)
+-- ========================================================
 local function createLogin(onSuccess)
     local loginGui = Instance.new("ScreenGui")
     loginGui.Name = "FattanLogin"
@@ -39,6 +51,10 @@ local function createLogin(onSuccess)
     frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
     frame.BorderSizePixel = 0
     frame.AnchorPoint = Vector2.new(0.5,0.5)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0,10)
+    local stroke = Instance.new("UIStroke", frame)
+    stroke.Thickness = 2
+    stroke.Color = Color3.fromRGB(0,170,255)
 
     local title = Instance.new("TextLabel", frame)
     title.Size = UDim2.new(1,0,0,36)
@@ -62,6 +78,7 @@ local function createLogin(onSuccess)
     box.TextEditable = true
     box.ClipsDescendants = true
     box.TextXAlignment = Enum.TextXAlignment.Center
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0,6)
 
     local status = Instance.new("TextLabel", frame)
     status.Size = UDim2.new(1,0,0,22)
@@ -80,6 +97,7 @@ local function createLogin(onSuccess)
     btn.TextSize = 16
     btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.TextColor3 = Color3.new(1,1,1)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
 
     local correctPassword = "fattanhubGG"
 
@@ -101,20 +119,20 @@ local function createLogin(onSuccess)
     end)
 end
 
--- ===========
--- Main script (wrapped in function to call after login)
--- ===========
+-- ========================================================
+-- MAIN (after login)
+-- ========================================================
 local function initMain()
-    -- ---------- Loading ----------
+    -- Loading GUI (keep as original)
     local loadingGui = Instance.new("ScreenGui")
     loadingGui.Name = "FattanLoading"
     loadingGui.ResetOnSpawn = false
     loadingGui.Parent = CoreGui
+    loadingGui.Enabled = false
 
     local loadFrame = Instance.new("Frame", loadingGui)
     loadFrame.Size = UDim2.new(1,0,1,0)
     loadFrame.BackgroundColor3 = Color3.fromRGB(6, 36, 90)
-
     local loadLabel = Instance.new("TextLabel", loadFrame)
     loadLabel.Size = UDim2.new(1,0,1,0)
     loadLabel.BackgroundTransparency = 1
@@ -123,13 +141,8 @@ local function initMain()
     loadLabel.TextSize = 36
     loadLabel.TextColor3 = Color3.new(1,1,1)
 
-    task.wait(0.9)
-    TweenService:Create(loadFrame, TweenInfo.new(0.8), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(loadLabel, TweenInfo.new(0.8), {TextTransparency = 1}):Play()
-    task.wait(0.8)
-    loadingGui:Destroy()
-
-    -- ---------- Main GUI (smaller for mobile) ----------
+    -- show loading briefly in login flow (called later)
+    -- ---------- Main GUI (compact / mobile-friendly) ----------
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "FattanHub"
     screenGui.ResetOnSpawn = false
@@ -137,11 +150,15 @@ local function initMain()
 
     local mainFrame = Instance.new("Frame", screenGui)
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 260, 0, 420) -- slightly bigger but still mobile-friendly
-    mainFrame.Position = UDim2.new(0.35,0,0.18,0)
+    mainFrame.Size = UDim2.new(0, 360, 0, 480) -- compact but roomy
+    mainFrame.Position = UDim2.new(0.31,0,0.16,0)
     mainFrame.BackgroundColor3 = Color3.fromRGB(8, 44, 110)
     mainFrame.Active = true
     mainFrame.Draggable = true
+    Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0,10)
+    local stroke = Instance.new("UIStroke", mainFrame)
+    stroke.Thickness = 2
+    stroke.Color = Color3.fromRGB(0,170,255)
 
     local title = Instance.new("TextLabel", mainFrame)
     title.Size = UDim2.new(1,0,0,36)
@@ -152,29 +169,30 @@ local function initMain()
     title.TextSize = 18
     title.TextColor3 = Color3.new(1,1,1)
     title.BackgroundTransparency = 0
+    Instance.new("UICorner", title).CornerRadius = UDim.new(0,6)
 
-    -- minimize and exit buttons (top-right)
+    -- minimize and exit
     local exitBtn = Instance.new("TextButton", mainFrame)
     exitBtn.Size = UDim2.new(0,26,0,22)
     exitBtn.Position = UDim2.new(1,-30,0,6)
-    exitBtn.AnchorPoint = Vector2.new(0,0)
     exitBtn.Text = "X"
     exitBtn.Font = Enum.Font.SourceSansBold
     exitBtn.TextSize = 18
     exitBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
     exitBtn.TextColor3 = Color3.new(1,1,1)
+    Instance.new("UICorner", exitBtn).CornerRadius = UDim.new(0,4)
 
     local minBtn = Instance.new("TextButton", mainFrame)
     minBtn.Size = UDim2.new(0,26,0,22)
     minBtn.Position = UDim2.new(1,-62,0,6)
-    minBtn.AnchorPoint = Vector2.new(0,0)
     minBtn.Text = "—"
     minBtn.Font = Enum.Font.SourceSansBold
     minBtn.TextSize = 18
     minBtn.BackgroundColor3 = Color3.fromRGB(180,180,60)
     minBtn.TextColor3 = Color3.new(1,1,1)
+    Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0,4)
 
-    -- create minimize icon (circular) hidden by default
+    -- mini icon
     local miniIcon = Instance.new("ImageButton", screenGui)
     miniIcon.Name = "FattanMiniIcon"
     miniIcon.Size = UDim2.new(0,54,0,54)
@@ -184,19 +202,16 @@ local function initMain()
     miniIcon.Visible = false
     miniIcon.Image = logoAsset
     miniIcon.ImageRectOffset = Vector2.new(0,0)
+    Instance.new("UICorner", miniIcon).CornerRadius = UDim.new(0,12)
 
-    -- minimize behavior
     minBtn.MouseButton1Click:Connect(function()
         mainFrame.Visible = false
         miniIcon.Visible = true
     end)
-    -- restore behavior
     miniIcon.MouseButton1Click:Connect(function()
         mainFrame.Visible = true
         miniIcon.Visible = false
     end)
-
-    -- exit behavior
     exitBtn.MouseButton1Click:Connect(function()
         pcall(function()
             if screenGui and screenGui.Parent then screenGui:Destroy() end
@@ -207,41 +222,43 @@ local function initMain()
     listLayout.Padding = UDim.new(0,6)
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-    local function createButton(text, callback)
+    -- createCategory and createBtn (used through-out)
+    local function createCategory(title)
+        local cat = Instance.new("TextLabel", mainFrame)
+        cat.Size = UDim2.new(1,0,0,30)
+        cat.Text = "🔹 "..title
+        cat.TextColor3 = Color3.new(1,1,1)
+        cat.Font = Enum.Font.GothamBold
+        cat.TextScaled = true
+        cat.BackgroundColor3 = Color3.fromRGB(6,30,80)
+        Instance.new("UICorner", cat).CornerRadius = UDim.new(0,6)
+        return cat
+    end
+    local function createBtn(text,callback)
         local btn = Instance.new("TextButton", mainFrame)
-        btn.Size = UDim2.new(1,-12,0,30)
+        btn.Size = UDim2.new(1,-16,0,30)
+        btn.Position = UDim2.new(0,8,0,0)
         btn.BackgroundColor3 = Color3.fromRGB(10,95,180)
         btn.Text = text
         btn.Font = Enum.Font.SourceSansSemibold
         btn.TextSize = 14
         btn.TextColor3 = Color3.new(1,1,1)
         btn.AutoButtonColor = true
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
         btn.MouseButton1Click:Connect(function()
-            pcall(callback)
+            pcall(callback, btn)
         end)
         return btn
     end
 
-    -- references for features that exist in original big file
-    -- We'll implement/replace and keep names similar to your original structure.
-
-    -- ---------- helper get char ----------
-    local function safeChar()
-        return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    end
-
-    -- keep mouse reference
-    local mouse = LocalPlayer:GetMouse()
-
     -- ============================
-    -- Fly (Joystick Mode) -> ***DI-GANTI DENGAN VERSI JOYSTICK + UP/DOWN + PANEL DRAGGABLE*** 
+    -- Movement (includes fly controls panel)
     -- ============================
-    local flying = false
-    local flyBV, flyBG, flyConn
-    local flySpeed = 80 -- default
-    -- UI controls for fly speed (kept in main frame)
+    createCategory("Movement")
+
+    -- Fly UI Row in main menu (shows speed controls)
     local flyRow = Instance.new("Frame", mainFrame)
-    flyRow.Size = UDim2.new(1,-12,0,34)
+    flyRow.Size = UDim2.new(1,-16,0,36)
     flyRow.BackgroundTransparency = 1
     local flyLabel = Instance.new("TextLabel", flyRow)
     flyLabel.Size = UDim2.new(0.45,0,1,0); flyLabel.Position = UDim2.new(0,6,0,0)
@@ -249,101 +266,54 @@ local function initMain()
     local flyMinus = Instance.new("TextButton", flyRow)
     flyMinus.Size = UDim2.new(0,36,0,26); flyMinus.Position = UDim2.new(0.58,0,0,4); flyMinus.Text = "−"; flyMinus.Font = Enum.Font.SourceSansBold; flyMinus.TextSize = 18; flyMinus.BackgroundColor3 = Color3.fromRGB(160,40,40)
     local flyValue = Instance.new("TextBox", flyRow)
-    flyValue.Size = UDim2.new(0,84,0,26); flyValue.Position = UDim2.new(0.72,0,0,4); flyValue.BackgroundColor3 = Color3.fromRGB(12,30,80); flyValue.TextColor3 = Color3.new(1,1,1); flyValue.Font = Enum.Font.SourceSansBold; flyValue.TextSize = 14; flyValue.Text = tostring(flySpeed)
+    flyValue.Size = UDim2.new(0,84,0,26); flyValue.Position = UDim2.new(0.72,0,0,4); flyValue.BackgroundColor3 = Color3.fromRGB(12,30,80); flyValue.TextColor3 = Color3.new(1,1,1); flyValue.Font = Enum.Font.SourceSansBold; flyValue.TextSize = 14
     local flyPlus = Instance.new("TextButton", flyRow)
     flyPlus.Size = UDim2.new(0,36,0,26); flyPlus.Position = UDim2.new(0.92,0,0,4); flyPlus.Text = "+"; flyPlus.Font = Enum.Font.SourceSansBold; flyPlus.TextSize = 18; flyPlus.BackgroundColor3 = Color3.fromRGB(40,120,40)
+    flyValue.Text = "80"
 
+    local flying = false
+    local flyBV, flyBG, flyConn
+    local flySpeed = 80
     local function setFlySpeed(v)
         local num = tonumber(v) or flySpeed
         num = math.clamp(math.floor(num), 1, 1000)
         flySpeed = num
         flyValue.Text = tostring(flySpeed)
     end
+    flyMinus.MouseButton1Click:Connect(function() setFlySpeed(flySpeed - 10) end)
+    flyPlus.MouseButton1Click:Connect(function() setFlySpeed(flySpeed + 10) end)
+    flyValue.FocusLost:Connect(function(enter) if enter then setFlySpeed(flyValue.Text) end end)
 
-    flyMinus.MouseButton1Click:Connect(function()
-        setFlySpeed(flySpeed - 10)
-    end)
-    flyPlus.MouseButton1Click:Connect(function()
-        setFlySpeed(flySpeed + 10)
-    end)
-    flyValue.FocusLost:Connect(function(enter)
-        setFlySpeed(flyValue.Text)
-    end)
-
-    -- create a draggable Fly control panel (separate from main menu)
-    local flyPanel = Instance.new("Frame")
+    -- Fly Control Panel (draggable)
+    local flyPanel = Instance.new("Frame", screenGui)
     flyPanel.Name = "FlyPanel"
-    flyPanel.Size = UDim2.new(0,180,0,140)
-    flyPanel.Position = UDim2.new(0.02, 0, 0.65, 0)
-    flyPanel.BackgroundColor3 = Color3.fromRGB(12, 40, 90)
+    flyPanel.Size = UDim2.new(0,200,0,150)
+    flyPanel.Position = UDim2.new(0.02,0,0.6,0)
+    flyPanel.BackgroundColor3 = Color3.fromRGB(12,40,90)
     flyPanel.Active = true
     flyPanel.Draggable = true
-    flyPanel.Parent = screenGui
-
+    Instance.new("UICorner", flyPanel).CornerRadius = UDim.new(0,8)
     local fpTitle = Instance.new("TextLabel", flyPanel)
-    fpTitle.Size = UDim2.new(1,0,0,26)
-    fpTitle.Position = UDim2.new(0,0,0,0)
-    fpTitle.BackgroundColor3 = Color3.fromRGB(6, 90, 170)
-    fpTitle.Text = "Fly Control"
-    fpTitle.Font = Enum.Font.GothamBold
-    fpTitle.TextSize = 14
-    fpTitle.TextColor3 = Color3.new(1,1,1)
+    fpTitle.Size = UDim2.new(1,0,0,26); fpTitle.Position = UDim2.new(0,0,0,0); fpTitle.BackgroundColor3 = Color3.fromRGB(6,90,170); fpTitle.Text = "Fly Control"; fpTitle.Font = Enum.Font.GothamBold; fpTitle.TextSize = 14; fpTitle.TextColor3 = Color3.new(1,1,1)
 
-    -- Fly toggle inside panel
     local fpToggle = Instance.new("TextButton", flyPanel)
-    fpToggle.Size = UDim2.new(0.9,0,0,28)
-    fpToggle.Position = UDim2.new(0.05,0,0,34)
-    fpToggle.Text = "Toggle Fly"
-    fpToggle.Font = Enum.Font.SourceSansBold
-    fpToggle.TextSize = 14
-    fpToggle.BackgroundColor3 = Color3.fromRGB(40,100,180)
-    fpToggle.TextColor3 = Color3.new(1,1,1)
-
-    -- Up / Down buttons
+    fpToggle.Size = UDim2.new(0.9,0,0,28); fpToggle.Position = UDim2.new(0.05,0,0,34); fpToggle.Text = "Toggle Fly"; fpToggle.Font = Enum.Font.SourceSansBold; fpToggle.TextSize = 14; fpToggle.BackgroundColor3 = Color3.fromRGB(40,100,180)
     local upBtn = Instance.new("TextButton", flyPanel)
-    upBtn.Size = UDim2.new(0.4,0,0,28)
-    upBtn.Position = UDim2.new(0.05,0,0,70)
-    upBtn.Text = "Up"
-    upBtn.Font = Enum.Font.SourceSansBold
-    upBtn.TextSize = 14
-    upBtn.BackgroundColor3 = Color3.fromRGB(40,180,100)
-    upBtn.TextColor3 = Color3.new(1,1,1)
-
+    upBtn.Size = UDim2.new(0.4,0,0,28); upBtn.Position = UDim2.new(0.05,0,0,70); upBtn.Text = "Up"
     local downBtn = Instance.new("TextButton", flyPanel)
-    downBtn.Size = UDim2.new(0.4,0,0,28)
-    downBtn.Position = UDim2.new(0.55,0,0,70)
-    downBtn.Text = "Down"
-    downBtn.Font = Enum.Font.SourceSansBold
-    downBtn.TextSize = 14
-    downBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
-    downBtn.TextColor3 = Color3.new(1,1,1)
-
-    -- Speed label inside panel (mirror)
+    downBtn.Size = UDim2.new(0.4,0,0,28); downBtn.Position = UDim2.new(0.55,0,0,70); downBtn.Text = "Down"
     local spLbl = Instance.new("TextLabel", flyPanel)
-    spLbl.Size = UDim2.new(0.9,0,0,20)
-    spLbl.Position = UDim2.new(0.05,0,0,104)
-    spLbl.BackgroundTransparency = 1
-    spLbl.Text = "Speed: "..tostring(flySpeed)
-    spLbl.Font = Enum.Font.SourceSans
-    spLbl.TextSize = 14
-    spLbl.TextColor3 = Color3.new(1,1,1)
+    spLbl.Size = UDim2.new(0.9,0,0,20); spLbl.Position = UDim2.new(0.05,0,0,104); spLbl.BackgroundTransparency = 1; spLbl.Text = "Speed: "..tostring(flySpeed)
 
-    -- Update spLbl when flySpeed changes from main UI
-    flyValue.Changed:Connect(function()
-        spLbl.Text = "Speed: "..tostring(flySpeed)
-    end)
+    flyValue.Changed:Connect(function() spLbl.Text = "Speed: "..tostring(flySpeed) end)
 
-    -- up/down behavior: apply small vertical velocity while pressed
-    local upHold = false
-    local downHold = false
-    local verticalSpeed = 60 -- up/down speed when hold
-
+    local upHold, downHold = false, false
     upBtn.MouseButton1Down:Connect(function() upHold = true end)
     upBtn.MouseButton1Up:Connect(function() upHold = false end)
     downBtn.MouseButton1Down:Connect(function() downHold = true end)
     downBtn.MouseButton1Up:Connect(function() downHold = false end)
 
-    -- Toggle button uses same flying logic as main toggle (keep both synced)
+    local verticalSpeed = 60
     local function startFly()
         if flying then return end
         flying = true
@@ -369,25 +339,18 @@ local function initMain()
             local hrp = safeChar():FindFirstChild("HumanoidRootPart")
             local hum = safeChar():FindFirstChildOfClass("Humanoid")
             if not hrp or not hum then return end
-            -- horizontal move by MoveDirection (joystick/WASD)
             local moveDir = hum.MoveDirection
             local vx, vy, vz = 0, 0, 0
             if moveDir.Magnitude > 0 then
                 local v = moveDir.Unit * flySpeed
                 vx, vy, vz = v.X, v.Y, v.Z
             end
-            -- vertical component from up/down hold
-            if upHold then
-                vy = verticalSpeed
-            elseif downHold then
-                vy = -verticalSpeed
-            end
+            if upHold then vy = verticalSpeed elseif downHold then vy = -verticalSpeed end
             flyBV.Velocity = Vector3.new(vx, vy, vz)
-            -- keep orientation stable
             flyBG.CFrame = hrp.CFrame
         end)
+        notify("Fly", "✔ Fly aktif")
     end
-
     local function stopFly()
         if not flying then return end
         flying = false
@@ -398,15 +361,11 @@ local function initMain()
         local ch = safeChar()
         local hum = ch:FindFirstChildOfClass("Humanoid")
         if hum then pcall(function() hum.PlatformStand = false end) end
+        notify("Fly", "✖ Fly nonaktif")
     end
 
-    fpToggle.MouseButton1Click:Connect(function()
-        if flying then stopFly() else startFly() end
-    end)
-
-    createButton("Fly (Joystick Mode) - Toggle", function()
-        if flying then stopFly() else startFly() end
-    end)
+    fpToggle.MouseButton1Click:Connect(function() if flying then stopFly() else startFly() end end)
+    createBtn("Fly (Joystick Mode) - Toggle", function() if flying then stopFly() else startFly() end end)
 
     -- ============================
     -- ESP (small name)
@@ -414,7 +373,8 @@ local function initMain()
     local espEnabled = false
     local function addNameTag(p)
         if not p.Character then return end
-        local head = p.Character:FindFirstChild("Head") or p.Character:FindFirstChild("HumanoidRootPart"); if not head then return end
+        local head = p.Character:FindFirstChild("Head") or p.Character:FindFirstChild("HumanoidRootPart")
+        if not head then return end
         if head:FindFirstChild("FattanName") then return end
         local bg = Instance.new("BillboardGui", head)
         bg.Name = "FattanName"; bg.Size = UDim2.new(0,110,0,20); bg.StudsOffset = Vector3.new(0,2.6,0); bg.AlwaysOnTop = true
@@ -430,8 +390,10 @@ local function initMain()
             if p.Character:FindFirstChild("FattanESP") then p.Character.FattanESP:Destroy() end
         end
     end
-    createButton("ESP Player (Toggle)", function()
+    createBtn("ESP Player (Toggle)", function(btn)
         espEnabled = not espEnabled
+        btn.Text = espEnabled and "👀 ESP: ON" or "👀 ESP: OFF"
+        notify("ESP", espEnabled and "✅ Aktif" or "❌ Nonaktif")
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
                 if espEnabled then
@@ -455,9 +417,11 @@ local function initMain()
     -- ============================
     -- Player List (teleport/freeze/selected for rope)
     -- ============================
+    createCategory("Players")
     local playerFrame = Instance.new("Frame", mainFrame)
-    playerFrame.Size = UDim2.new(1,-12,0,120)
+    playerFrame.Size = UDim2.new(1,-16,0,140)
     playerFrame.BackgroundColor3 = Color3.fromRGB(8,28,70)
+    Instance.new("UICorner", playerFrame).CornerRadius = UDim.new(0,6)
 
     local scroll = Instance.new("ScrollingFrame", playerFrame)
     scroll.Size = UDim2.new(1,0,1,0); scroll.CanvasSize = UDim2.new(0,0,0,0); scroll.ScrollBarThickness = 6
@@ -476,6 +440,7 @@ local function initMain()
                     selected = p.Name
                     local old = b.BackgroundColor3; b.BackgroundColor3 = Color3.fromRGB(120,150,200)
                     task.delay(0.22, function() if b and b.Parent then b.BackgroundColor3 = old end end)
+                    notify("Player Selected", "Selected: "..p.Name)
                 end)
             end
         end
@@ -484,21 +449,21 @@ local function initMain()
     Players.PlayerAdded:Connect(refreshPlayers); Players.PlayerRemoving:Connect(refreshPlayers)
     refreshPlayers()
 
-    createButton("Teleport to Selected", function()
-        if not selected then return end
-        local target = Players:FindFirstChild(selected); if not target then return end
-        local tchar = target.Character; if not tchar or not tchar:FindFirstChild("HumanoidRootPart") then return end
+    createBtn("Teleport to Selected", function()
+        if not selected then notify("Teleport", "Tidak ada pemain terpilih"); return end
+        local target = Players:FindFirstChild(selected); if not target then notify("Teleport", "Player tidak ditemukan"); return end
+        local tchar = target.Character; if not tchar or not tchar:FindFirstChild("HumanoidRootPart") then notify("Teleport", "Target belum siap"); return end
         local mychar = safeChar(); local hrp = mychar:WaitForChild("HumanoidRootPart")
         hrp.CFrame = tchar.HumanoidRootPart.CFrame + Vector3.new(2,0,0)
+        notify("Teleport", "Teleport ke "..selected)
     end)
 
-    -- Freeze selected (10s)
-    createButton("Freeze Selected (10s)", function()
-        if not selected then return end
-        local target = Players:FindFirstChild(selected); if not target then return end
-        local tchar = target.Character; if not tchar then return end
+    createBtn("Freeze Selected (10s)", function()
+        if not selected then notify("Freeze", "Tidak ada pemain terpilih"); return end
+        local target = Players:FindFirstChild(selected); if not target then notify("Freeze", "Player tidak ditemukan"); return end
+        local tchar = target.Character; if not tchar then notify("Freeze", "Karakter target tidak ada"); return end
         local hrp = tchar:FindFirstChild("HumanoidRootPart"); local hum = tchar:FindFirstChildOfClass("Humanoid")
-        if not hrp or not hum then return end
+        if not hrp or not hum then notify("Freeze", "Target belum siap"); return end
 
         local ice = Instance.new("Part", workspace)
         ice.Name = "Fattan_Ice_" .. (target.Name or "unk")
@@ -513,14 +478,13 @@ local function initMain()
         local weld = Instance.new("WeldConstraint", ice)
         weld.Part0 = ice; weld.Part1 = hrp
 
-        if hum then
-            pcall(function()
-                hum.WalkSpeed = 0
-                hum.JumpPower = 0
-                hum.PlatformStand = true
-            end)
-        end
+        pcall(function()
+            hum.WalkSpeed = 0
+            hum.JumpPower = 0
+            hum.PlatformStand = true
+        end)
 
+        notify("Freeze", "Freeze "..target.Name.." selama 10 detik")
         task.delay(10, function()
             pcall(function()
                 if ice and ice.Parent then ice:Destroy() end
@@ -534,11 +498,9 @@ local function initMain()
     end)
 
     -- ============================
-    -- Pull Selected (Elastic Rope 3D) -> TOGGLE ON/OFF (visual pull only)
+    -- Pull Selected (Elastic Rope 3D)
     -- ============================
-    -- We'll store active rope state per-target for safety.
-    local activeRope = {} -- [player] = {att1, att2, beam, conn}
-
+    local activeRope = {}
     local function cleanRopeForPlayer(player)
         if not player then return end
         local data = activeRope[player]
@@ -553,94 +515,57 @@ local function initMain()
         end
     end
 
-    -- Toggle function
-    createButton("Tarik Tali (3D) - Toggle", function()
-        if not selected then return end
+    createBtn("Tarik Tali (3D) - Toggle", function()
+        if not selected then notify("Rope", "Tidak ada pemain terpilih"); return end
         local targetPlayer = Players:FindFirstChild(selected)
-        if not targetPlayer then return end
-
-        -- if already active -> clean
+        if not targetPlayer then notify("Rope", "Player tidak ditemukan"); return end
         if activeRope[targetPlayer] then
             cleanRopeForPlayer(targetPlayer)
+            notify("Rope", "Rope dihentikan")
             return
         end
 
         local tchar = targetPlayer.Character
         local mychar = safeChar()
-        if not tchar or not mychar then return end
+        if not tchar or not mychar then notify("Rope", "Karakter tidak siap"); return end
         local thrp = tchar:FindFirstChild("HumanoidRootPart")
         local myhrp = mychar:FindFirstChild("HumanoidRootPart")
-        if not thrp or not myhrp then return end
+        if not thrp or not myhrp then notify("Rope", "HumanoidRootPart tidak ditemukan"); return end
 
-        -- avoid duplicate
-        if thrp:FindFirstChild("FattanElasticRope_Att2") then return end
+        if thrp:FindFirstChild("FattanElasticRope_Att2") then notify("Rope", "Rope sudah terpasang"); return end
 
-        -- attachments
-        local att1 = Instance.new("Attachment", myhrp)
-        att1.Name = "FattanElasticRope_Att1"
-        local att2 = Instance.new("Attachment", thrp)
-        att2.Name = "FattanElasticRope_Att2"
-
-        -- Beam visual (kept similar)
+        local att1 = Instance.new("Attachment", myhrp); att1.Name = "FattanElasticRope_Att1"
+        local att2 = Instance.new("Attachment", thrp); att2.Name = "FattanElasticRope_Att2"
         local ropeBeam = Instance.new("Beam", myhrp)
-        ropeBeam.Name = "FattanElasticRope_Beam"
-        ropeBeam.Attachment0 = att1
-        ropeBeam.Attachment1 = att2
-        ropeBeam.FaceCamera = false
-        ropeBeam.Width0 = 0.18
-        ropeBeam.Width1 = 0.18
-        ropeBeam.Texture = ""
-        ropeBeam.TextureMode = Enum.TextureMode.Stretch
-        ropeBeam.Segments = 15
-        ropeBeam.Transparency = NumberSequence.new(0)
-        ropeBeam.Color = ColorSequence.new(Color3.fromRGB(139,69,19))
+        ropeBeam.Name = "FattanElasticRope_Beam"; ropeBeam.Attachment0 = att1; ropeBeam.Attachment1 = att2
+        ropeBeam.FaceCamera = false; ropeBeam.Width0 = 0.18; ropeBeam.Width1 = 0.18; ropeBeam.TextureMode = Enum.TextureMode.Stretch
+        ropeBeam.Segments = 15; ropeBeam.Transparency = NumberSequence.new(0); ropeBeam.Color = ColorSequence.new(Color3.fromRGB(139,69,19))
         ropeBeam.Parent = myhrp
-
-        -- initial curve
         ropeBeam.CurveSize0 = math.clamp((myhrp.Position - thrp.Position).Magnitude / 30, 0, 1.5)
         ropeBeam.CurveSize1 = ropeBeam.CurveSize0 * 0.6
 
-        -- Visual pull: use RenderStepped for smooth per-frame visual movement (client-side only)
-        local minDistance = 6 -- minimal jarak agar tidak nempel
-        local pulling = true
+        local minDistance = 6
         local rsConn
         rsConn = RunService.RenderStepped:Connect(function(dt)
-            if not pulling then return end
-            if not att1.Parent or not att2.Parent or not ropeBeam.Parent then
-                if rsConn then rsConn:Disconnect(); rsConn = nil end
-                return
-            end
-
-            -- update curve based on current distance
+            if not att1.Parent or not att2.Parent or not ropeBeam.Parent then if rsConn then rsConn:Disconnect(); rsConn = nil end; return end
             local dist = (att1.WorldPosition - att2.WorldPosition).Magnitude
             local curve = math.clamp(1.5 - (dist/60), 0, 1.5)
             ropeBeam.CurveSize0 = curve
             ropeBeam.CurveSize1 = curve * 0.6
-
-            -- visual pull: move target HRP towards myhrp but keep minDistance
             if thrp.Parent and myhrp.Parent then
                 local dir = myhrp.Position - thrp.Position
                 local d = dir.Magnitude
                 if d > minDistance then
                     local targetPos = myhrp.Position - dir.Unit * minDistance
-                    -- smooth lerp for natural motion (0.12-0.2 smoothing)
                     local newCFrame = thrp.CFrame:Lerp(CFrame.new(targetPos, targetPos + thrp.CFrame.LookVector), 0.15)
                     thrp.CFrame = newCFrame
                 end
             end
         end)
 
-        -- save into activeRope
-        activeRope[targetPlayer] = {
-            att1 = att1,
-            att2 = att2,
-            beam = ropeBeam,
-            conn = rsConn,
-            pulling = true,
-            minDistance = minDistance,
-        }
+        activeRope[targetPlayer] = {att1 = att1, att2 = att2, beam = ropeBeam, conn = rsConn, pulling = true, minDistance = minDistance}
+        notify("Rope", "Rope dipasang ke "..targetPlayer.Name)
 
-        -- cleanup when player leaves or dies
         local charRemCon
         charRemCon = targetPlayer.CharacterRemoving:Connect(function()
             cleanRopeForPlayer(targetPlayer)
@@ -648,16 +573,17 @@ local function initMain()
         end)
     end)
 
-    -- Add a manual cleanup button (optional)
-    createButton("Stop All Ropes", function()
+    createBtn("Stop All Ropes", function()
         for pl,_ in pairs(activeRope) do
             cleanRopeForPlayer(pl)
         end
+        notify("Rope", "Semua rope dihentikan")
     end)
 
     -- ============================
-    -- Delete Parts (scan, click confirm, restore) and confirm GUI moved to left-middle
+    -- Delete Parts (scan + confirm)
     -- ============================
+    createCategory("Utility")
     local scanning = false
     local original = {}
     local detectors = {}
@@ -668,8 +594,9 @@ local function initMain()
 
     local confFrame = Instance.new("Frame", confirmGui)
     confFrame.Size = UDim2.new(0,220,0,110)
-    confFrame.Position = UDim2.new(0, 10, 0.5, -55) -- left-middle
+    confFrame.Position = UDim2.new(0, 10, 0.5, -55)
     confFrame.BackgroundColor3 = Color3.fromRGB(24,24,24)
+    Instance.new("UICorner", confFrame).CornerRadius = UDim.new(0,8)
 
     local confLabel = Instance.new("TextLabel", confFrame)
     confLabel.Size = UDim2.new(1,0,0,50); confLabel.BackgroundTransparency = 1
@@ -679,6 +606,8 @@ local function initMain()
     yes.Size = UDim2.new(0.5,0,0,50); yes.Position = UDim2.new(0,0,0.45,0); yes.Text = "Ya"; yes.BackgroundColor3 = Color3.fromRGB(0,150,0)
     local no = Instance.new("TextButton", confFrame)
     no.Size = UDim2.new(0.5,0,0,50); no.Position = UDim2.new(0.5,0,0.45,0); no.Text = "Tidak"; no.BackgroundColor3 = Color3.fromRGB(150,0,0)
+    Instance.new("UICorner", yes).CornerRadius = UDim.new(0,6)
+    Instance.new("UICorner", no).CornerRadius = UDim.new(0,6)
 
     yes.MouseButton1Click:Connect(function()
         if pending and pending.Parent then
@@ -687,6 +616,7 @@ local function initMain()
         end
         pending = nil
         confirmGui.Enabled = false
+        notify("Delete Parts", "Part dihapus")
     end)
     no.MouseButton1Click:Connect(function()
         if pending and pending.Parent then
@@ -697,6 +627,7 @@ local function initMain()
         end
         pending = nil
         confirmGui.Enabled = false
+        notify("Delete Parts", "Dibatalkan")
     end)
 
     local function startScan()
@@ -711,8 +642,8 @@ local function initMain()
                     local cd = Instance.new("ClickDetector", v)
                     cd.MaxActivationDistance = 100
                     detectors[v] = cd
-                    cd.MouseClick:Connect(function(player)
-                        if player == LocalPlayer and scanning and not pending then
+                    cd.MouseClick:Connect(function(playerClicked)
+                        if playerClicked == LocalPlayer and scanning and not pending then
                             pending = v
                             pcall(function() v.Color = Color3.fromRGB(255,255,0) end)
                             confirmGui.Enabled = true
@@ -723,6 +654,7 @@ local function initMain()
                 end
             end
         end
+        notify("Scan Parts", "Scan aktif: klik part untuk hapus")
     end
 
     local function stopScan()
@@ -738,23 +670,25 @@ local function initMain()
         original = {}
         pending = nil
         confirmGui.Enabled = false
+        notify("Scan Parts", "Scan dihentikan / restore")
     end
 
-    createButton("Scan Parts (Toggle)", function()
+    createBtn("Scan Parts (Toggle)", function()
         if not scanning then startScan() else stopScan() end
     end)
-    createButton("Delete All Parts", function()
+    createBtn("Delete All Parts", function()
         for _,v in ipairs(workspace:GetDescendants()) do
             if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
                 pcall(function() v:Destroy() end)
             end
         end
         original = {}
+        notify("Delete All", "Semua part (non HRP) dihancurkan")
     end)
-    createButton("Restore Parts", function() stopScan() end)
+    createBtn("Restore Parts", function() stopScan(); notify("Restore", "Bagian dikembalikan") end)
 
     -- ============================
-    -- WalkFling (Invisible Block, does not spin character)
+    -- WalkFling (invisible block) - functional
     -- ============================
     local flingOn = false
     local flingConn = nil
@@ -775,7 +709,6 @@ local function initMain()
         flingPart.Massless = true
         flingPart.Parent = workspace
 
-        -- weld so it follows HRP
         local weld = Instance.new("WeldConstraint", flingPart)
         weld.Part0 = flingPart
         weld.Part1 = hrp
@@ -787,8 +720,9 @@ local function initMain()
         flingConn = RunService.Heartbeat:Connect(function()
             if not flingOn or not hrp.Parent or not flingPart.Parent then return end
             local forward = hrp.CFrame.LookVector
-            flingBV.Velocity = forward * 160 -- adjust power here
+            flingBV.Velocity = forward * 160
         end)
+        notify("WalkFling", "WalkFling aktif")
     end
 
     local function stopFlingInvisible()
@@ -797,26 +731,27 @@ local function initMain()
         if flingBV and flingBV.Parent then pcall(function() flingBV:Destroy() end) end
         if flingPart and flingPart.Parent then pcall(function() flingPart:Destroy() end) end
         flingBV, flingPart = nil, nil
+        notify("WalkFling", "WalkFling nonaktif")
     end
 
-    createButton("WalkFling (Toggle)", function()
+    createBtn("WalkFling (Toggle)", function(btn)
         if flingOn then stopFlingInvisible() else startFlingInvisible() end
     end)
 
-    -- ensure re-enable on respawn if toggle was on
     LocalPlayer.CharacterAdded:Connect(function()
         if flingOn then task.wait(0.8); pcall(startFlingInvisible) end
     end)
 
     -- ============================
-    -- Run & Jump controls (kept from original, adjusted UI sizing)
+    -- Run & Jump controls (UI + apply)
     -- ============================
+    createCategory("Movement Controls")
     local runVal = 16
     local jumpVal = 50
 
     local function makeRow(labelText, initial)
         local frame = Instance.new("Frame", mainFrame)
-        frame.Size = UDim2.new(1,-12,0,36)
+        frame.Size = UDim2.new(1,-16,0,36)
         frame.BackgroundTransparency = 1
         local lbl = Instance.new("TextLabel", frame)
         lbl.Size = UDim2.new(0.5,0,1,0); lbl.Position = UDim2.new(0,6,0,0)
@@ -841,7 +776,7 @@ local function initMain()
         runVal = math.min(100, runVal + 1); runLabel.Text = tostring(runVal)
         pcall(function() local hum = safeChar():FindFirstChildOfClass("Humanoid"); if hum then hum.WalkSpeed = runVal end end)
     end)
-    createButton("Apply Run Speed Now", function() pcall(function() local hum = safeChar():FindFirstChildOfClass("Humanoid"); if hum then hum.WalkSpeed = runVal end end) end)
+    createBtn("Apply Run Speed Now", function() pcall(function() local hum = safeChar():FindFirstChildOfClass("Humanoid"); if hum then hum.WalkSpeed = runVal end end); notify("Run Speed", "Applied: "..tostring(runVal)) end)
 
     local jumpFrame, jumpMinus, jumpLabel, jumpPlus = makeRow("Jump Power", jumpVal)
     jumpMinus.MouseButton1Click:Connect(function()
@@ -849,14 +784,14 @@ local function initMain()
         pcall(function() local hum = safeChar():FindFirstChildOfClass("Humanoid"); if hum then hum.UseJumpPower = true; hum.JumpPower = jumpVal end end)
     end)
     jumpPlus.MouseButton1Click:Connect(function()
-        jumpVal = math.min(100, jumpVal + 1); jumpLabel.Text = tostring(jumpVal)
+        jumpVal = math.min(200, jumpVal + 1); jumpLabel.Text = tostring(jumpVal)
         pcall(function() local hum = safeChar():FindFirstChildOfClass("Humanoid"); if hum then hum.UseJumpPower = true; hum.JumpPower = jumpVal end end)
     end)
-    createButton("Apply Jump Now", function() pcall(function() local hum = safeChar():FindFirstChildOfClass("Humanoid"); if hum then hum.UseJumpPower = true; hum.JumpPower = jumpVal end end) end)
-
-    createButton("Reset Speed & Jump", function()
+    createBtn("Apply Jump Now", function() pcall(function() local hum = safeChar():FindFirstChildOfClass("Humanoid"); if hum then hum.UseJumpPower = true; hum.JumpPower = jumpVal end end); notify("Jump Power", "Applied: "..tostring(jumpVal)) end)
+    createBtn("Reset Speed & Jump", function()
         runVal = 16; jumpVal = 50; runLabel.Text = tostring(runVal); jumpLabel.Text = tostring(jumpVal)
         pcall(function() local hum = safeChar():FindFirstChildOfClass("Humanoid"); if hum then hum.WalkSpeed = runVal; hum.UseJumpPower = true; hum.JumpPower = jumpVal end end)
+        notify("Reset", "Speed & Jump direset")
     end)
 
     -- ============================
@@ -872,6 +807,7 @@ local function initMain()
         local img = Instance.new("ImageLabel", bg); img.Size = UDim2.new(0,28,0,28); img.Position = UDim2.new(0,4,0,0); img.BackgroundTransparency = 1
         pcall(function() img.Image = logoAsset end)
         local lbl = Instance.new("TextLabel", bg); lbl.Size = UDim2.new(1,0,1,0); lbl.BackgroundTransparency = 1; lbl.Text = " OWNER"; lbl.Font = Enum.Font.GothamBlack; lbl.TextColor3 = Color3.fromRGB(255,215,0); lbl.TextScaled = true; lbl.TextStrokeTransparency = 0.2
+        notify("Owner Crown", "Owner crown dipasang")
     end
     if LocalPlayer.Character then pcall(createOwnerCrown) end
     LocalPlayer.CharacterAdded:Connect(function() task.wait(0.7); pcall(createOwnerCrown) end)
@@ -880,12 +816,154 @@ local function initMain()
     -- Contact
     -- ============================
     local contact = Instance.new("TextLabel", mainFrame)
-    contact.Size = UDim2.new(1,-12,0,28); contact.BackgroundTransparency = 1; contact.Position = UDim2.new(0,6,1,-34)
+    contact.Size = UDim2.new(1,-16,0,28); contact.BackgroundTransparency = 1; contact.Position = UDim2.new(0,8,1,-36)
     contact.Text = "Contact: FattanHub v3.0"; contact.Font = Enum.Font.SourceSansBold; contact.TextSize = 12; contact.TextColor3 = Color3.new(0.88,0.88,0.88)
 
-    -- Final cleanup note
-    -- If you want to completely remove GUI from CoreGui: CoreGui:FindFirstChild("FattanHub"):Destroy()
+    -- ============================
+    -- Auto System (Full) - place here so it's inside main GUI
+    -- ============================
+    createCategory("Auto System")
+
+    -- Noclip (repeat safe run)
+    local noclipOn = false
+    createBtn("🚪 Noclip: OFF", function(btn)
+        noclipOn = not noclipOn
+        btn.Text = noclipOn and "🚪 Noclip: ON" or "🚪 Noclip: OFF"
+        notify("Noclip", noclipOn and "✅ Aktif" or "❌ Nonaktif")
+    end)
+    RunService.Stepped:Connect(function()
+        if noclipOn and LocalPlayer.Character then
+            for _,p in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if p:IsA("BasePart") then
+                    pcall(function() p.CanCollide = false end)
+                end
+            end
+        end
+    end)
+
+    -- GodMode
+    local godOn = false
+    createBtn("👑 GodMode: OFF", function(btn)
+        godOn = not godOn
+        btn.Text = godOn and "👑 GodMode: ON" or "👑 GodMode: OFF"
+        notify("GodMode", godOn and "✅ Aktif" or "❌ Nonaktif")
+        if godOn then
+            task.spawn(function()
+                while godOn do
+                    task.wait(0.6)
+                    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    if hum then
+                        pcall(function() hum.Health = hum.MaxHealth end)
+                    end
+                end
+            end)
+        end
+    end)
+
+    -- Auto Respawn
+    local autoRespawn = false
+    createBtn("🔄 Auto Respawn: OFF", function(btn)
+        autoRespawn = not autoRespawn
+        btn.Text = autoRespawn and "🔄 Auto Respawn: ON" or "🔄 Auto Respawn: OFF"
+        notify("Auto Respawn", autoRespawn and "✅ Aktif" or "❌ Nonaktif")
+    end)
+    LocalPlayer.CharacterAdded:Connect(function(char)
+        char:WaitForChild("Humanoid").Died:Connect(function()
+            if autoRespawn then
+                task.wait(1)
+                pcall(function() LocalPlayer:LoadCharacter() end)
+            end
+        end)
+    end)
+
+    -- Auto Rejoin
+    local autoRejoin = false
+    createBtn("♻ Auto Rejoin: OFF", function(btn)
+        autoRejoin = not autoRejoin
+        btn.Text = autoRejoin and "♻ Auto Rejoin: ON" or "♻ Auto Rejoin: OFF"
+        notify("Auto Rejoin", autoRejoin and "✅ Aktif" or "❌ Nonaktif")
+    end)
+    LocalPlayer.OnTeleport:Connect(function(State)
+        if autoRejoin and State == Enum.TeleportState.Failed then
+            task.wait(2)
+            pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
+        end
+    end)
+    Players.PlayerRemoving:Connect(function(leaver)
+        if autoRejoin and leaver == LocalPlayer then
+            task.wait(2)
+            pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
+        end
+    end)
+
+    -- Invisible
+    local invisibleOn = false
+    createBtn("🔮 Invisible: OFF", function(btn)
+        invisibleOn = not invisibleOn
+        btn.Text = invisibleOn and "🔮 Invisible: ON" or "🔮 Invisible: OFF"
+        notify("Invisible", invisibleOn and "✅ Aktif" or "❌ Nonaktif")
+        local char = LocalPlayer.Character
+        if char then
+            for _,part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    pcall(function()
+                        part.Transparency = invisibleOn and 1 or 0
+                        for _, dec in ipairs(part:GetDescendants()) do
+                            if dec:IsA("Decal") then dec.Transparency = invisibleOn and 1 or 0 end
+                        end
+                    end)
+                end
+            end
+        end
+    end)
+
+    -- Anti-AFK (toggle)
+    local antiAfk = false
+    createBtn("🛡 Anti-AFK: OFF", function(btn)
+        antiAfk = not antiAfk
+        btn.Text = antiAfk and "🛡 Anti-AFK: ON" or "🛡 Anti-AFK: OFF"
+        notify("Anti-AFK", antiAfk and "✅ Aktif" or "❌ Nonaktif")
+    end)
+    LocalPlayer.Idled:Connect(function()
+        if antiAfk then
+            pcall(function()
+                VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                task.wait(1)
+                VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            end)
+        end
+    end)
+
+    -- Final note: if you want to completely remove GUI: CoreGui:FindFirstChild("FattanHub"):Destroy()
+    -- end initMain
 end
 
 -- Run: show login first, then init main on correct password
-createLogin(initMain)
+createLogin(function()
+    -- play loading animation then open main
+    -- show loading
+    local loadingGui = CoreGui:FindFirstChild("FattanLoading")
+    if loadingGui then
+        loadingGui.Enabled = true
+        task.wait(0.9)
+        -- fade
+        local loadFrame = loadingGui:FindFirstChildWhichIsA("Frame")
+        local loadLabel = loadFrame and loadFrame:FindFirstChildWhichIsA("TextLabel")
+        if loadFrame then
+            pcall(function()
+                TweenService:Create(loadFrame, TweenInfo.new(0.8), {BackgroundTransparency = 1}):Play()
+            end)
+        end
+        if loadLabel then
+            pcall(function()
+                TweenService:Create(loadLabel, TweenInfo.new(0.8), {TextTransparency = 1}):Play()
+            end)
+        end
+        task.wait(0.9)
+        pcall(function() loadingGui:Destroy() end)
+    end
+    -- init main
+    pcall(initMain)
+end)
+
+-- EOF
