@@ -135,29 +135,22 @@ local function initMain()
     task.wait(0.8)
     loadingGui:Destroy()
 
-    -- ---------- Main GUI (mobile-friendly) ----------
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "FattanHub"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = CoreGui
+-- 🌟 Main GUI
+local mainGui = Instance.new("ScreenGui", player.PlayerGui)
+mainGui.Enabled = false
+local mainFrame = Instance.new("Frame", mainGui)
+mainFrame.Size = UDim2.new(0.35, 0, 0.45, 0) -- compact
+mainFrame.Position = UDim2.new(0.325, 0, 0.25, 0) -- center
+mainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0,12)
+local stroke2 = Instance.new("UIStroke", mainFrame)
+stroke2.Thickness = 2
+stroke2.Color = Color3.fromRGB(0,170,255)
 
-    local mainFrame = Instance.new("Frame", screenGui)
-    mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 260, 0, 420)
-    mainFrame.Position = UDim2.new(0.35,0,0.18,0)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(8, 44, 110)
-    mainFrame.Active = true
-    mainFrame.Draggable = true
+local uiList = Instance.new("UIListLayout", mainFrame)
+uiList.SortOrder = Enum.SortOrder.LayoutOrder
+uiList.Padding = UDim.new(0,6)
 
-    local title = Instance.new("TextLabel", mainFrame)
-    title.Size = UDim2.new(1,0,0,36)
-    title.Position = UDim2.new(0,0,0,0)
-    title.BackgroundColor3 = Color3.fromRGB(4, 110, 200)
-    title.Text = "FATTAN HUB"
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 18
-    title.TextColor3 = Color3.new(1,1,1)
-    title.BackgroundTransparency = 0
 
     -- minimize and exit buttons (top-right)
     local exitBtn = Instance.new("TextButton", mainFrame)
@@ -726,7 +719,62 @@ local function initMain()
         end
         original = {}
     end)
-    createButton("Restore Parts", function() stopScan() end)
+createButton("Restore Parts", function() stopScan() end)
+    
+--=========================================================
+-- 🔄 Extra Features
+--=========================================================
+createCategory("Extra")
+
+-- 🚪 Noclip
+local noclipEnabled = false
+createBtn("🚪 Noclip: OFF", function(btn)
+    noclipEnabled = not noclipEnabled
+    btn.Text = noclipEnabled and "🚪 Noclip: ON" or "🚪 Noclip: OFF"
+end)
+game:GetService("RunService").Stepped:Connect(function()
+    if noclipEnabled and player.Character then
+        for _, part in ipairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- 💀 Auto Respawn
+local autoRespawnEnabled = false
+createBtn("💀 Auto Respawn: OFF", function(btn)
+    autoRespawnEnabled = not autoRespawnEnabled
+    btn.Text = autoRespawnEnabled and "💀 Auto Respawn: ON" or "💀 Auto Respawn: OFF"
+
+    if autoRespawnEnabled then
+        player.CharacterAdded:Connect(function(char)
+            char:WaitForChild("Humanoid").Died:Connect(function()
+                if autoRespawnEnabled then
+                    task.wait(2)
+                    player:LoadCharacter()
+                end
+            end)
+        end)
+    end
+end)
+
+-- 🔁 Auto Rejoin
+local autoRejoinEnabled = false
+createBtn("🔁 Auto Rejoin: OFF", function(btn)
+    autoRejoinEnabled = not autoRejoinEnabled
+    btn.Text = autoRejoinEnabled and "🔁 Auto Rejoin: ON" or "🔁 Auto Rejoin: OFF"
+
+    if autoRejoinEnabled then
+        player.OnTeleport:Connect(function(State)
+            if State == Enum.TeleportState.Failed and autoRejoinEnabled then
+                task.wait(2)
+                game:GetService("TeleportService"):Teleport(game.PlaceId, player)
+            end
+        end)
+    end
+end)
 
     -- ============================
     -- WalkFling (Invisible Block)
