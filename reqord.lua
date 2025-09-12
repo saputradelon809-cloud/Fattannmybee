@@ -1,8 +1,39 @@
--- ===== FATTANHUB Recorder Final =====
+-- ===== FATTANHUB Recorder Full =====
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== Loading Screen =====
+local loadingGui = Instance.new("ScreenGui",playerGui)
+loadingGui.Name = "FATTANHUB_Loading"
+
+local loadingFrame = Instance.new("Frame",loadingGui)
+loadingFrame.Size=UDim2.new(1,0,1,0)
+loadingFrame.BackgroundColor3=Color3.fromRGB(15,15,15)
+
+local loadingLabel = Instance.new("TextLabel",loadingFrame)
+loadingLabel.Size=UDim2.new(0.8,0,0,80)
+loadingLabel.Position=UDim2.new(0.1,0,0.4,0)
+loadingLabel.BackgroundTransparency=1
+loadingLabel.Text="FATTANHUB👑"
+loadingLabel.TextColor3=Color3.fromRGB(255,215,0)
+loadingLabel.Font=Enum.Font.GothamBlack
+loadingLabel.TextScaled=true
+loadingLabel.TextStrokeTransparency=0
+loadingLabel.TextXAlignment=Enum.TextXAlignment.Center
+loadingLabel.TextYAlignment=Enum.TextYAlignment.Center
+
+local barBack=Instance.new("Frame",loadingFrame)
+barBack.Size=UDim2.new(0.6,0,0,20)
+barBack.Position=UDim2.new(0.2,0,0.6,0)
+barBack.BackgroundColor3=Color3.fromRGB(50,50,50)
+Instance.new("UICorner",barBack).CornerRadius=UDim.new(0,10)
+
+local barFront=Instance.new("Frame",barBack)
+barFront.Size=UDim2.new(0,0,1,0)
+barFront.BackgroundColor3=Color3.fromRGB(255,215,0)
+Instance.new("UICorner",barFront).CornerRadius=UDim.new(0,10)
 
 -- ===== Main GUI =====
 local guiName = "FATTANHUB_Recorder"
@@ -15,14 +46,13 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 screenGui.Enabled = true
 
--- Main Frame
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0,360,0,500)
 mainFrame.Position = UDim2.new(0.5,-180,0.1,0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(35,35,40)
 mainFrame.Active = true
 mainFrame.Draggable = true
-mainFrame.Visible = false -- sembunyi sampai loading selesai
+mainFrame.Visible = false -- tampil setelah loading selesai
 mainFrame.Parent = screenGui
 
 -- Header
@@ -119,7 +149,7 @@ local listLayout = Instance.new("UIListLayout", replayList)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Padding = UDim.new(0,5)
 
--- ===== Replay Logic =====
+-- Replay logic
 local character, hrp
 local isRecording, isPausedRecord, isPaused = false,false,false
 local recordData = {}
@@ -147,36 +177,39 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
+-- Play replay
 local function playReplay(data)
     local token = {}
     currentReplayToken = token
-    local speed = tonumber(speedBox.Text) or 1
-    speed = speed>0 and speed or 1
     local index = 1
-    while index<=#data do
-        if currentReplayToken~=token then break end
-        while isPaused and currentReplayToken==token do RunService.Heartbeat:Wait() end
-        if hrp and hrp.Parent and currentReplayToken==token then
+    while index <= #data do
+        if currentReplayToken ~= token then break end
+        while isPaused and currentReplayToken == token do
+            RunService.Heartbeat:Wait()
+        end
+        if hrp and hrp.Parent and currentReplayToken == token then
             local f = data[math.floor(index)]
             hrp.CFrame = CFrame.lookAt(
                 Vector3.new(f.Position[1],f.Position[2],f.Position[3]),
-                Vector3.new(f.Position[1]+f.LookVector[1],f.Position[2]+f.LookVector[2],f.Position[3]+f.LookVector[3]),
-                Vector3.new(f.UpVector[1],f.UpVector[2],f.UpVector[3])
+                Vector3.new(f.Position[1]+f.LookVector[1], f.Position[2]+f.LookVector[2], f.Position[3]+f.LookVector[3]),
+                Vector3.new(f.UpVector[1], f.UpVector[2], f.UpVector[3])
             )
         end
+        local speed = tonumber(speedBox.Text) or 1
+        if speed <= 0 then speed = 1 end
         index = index + speed
         RunService.Heartbeat:Wait()
     end
-    if currentReplayToken==token then currentReplayToken=nil end
+    if currentReplayToken == token then currentReplayToken=nil end
 end
 
+-- Refresh list
 local function refreshReplayList()
     for _,c in ipairs(replayList:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
     for i,r in ipairs(savedReplays) do
         local item = Instance.new("Frame", replayList)
         item.Size = UDim2.new(1,0,0,40)
         item.BackgroundColor3 = Color3.fromRGB(65,65,75)
-
         local nameBox = Instance.new("TextBox", item)
         nameBox.Size = UDim2.new(0.5,-10,1,0)
         nameBox.Position = UDim2.new(0,5,0,0)
@@ -184,8 +217,6 @@ local function refreshReplayList()
         nameBox.TextColor3 = Color3.new(1,1,1)
         nameBox.ClearTextOnFocus=false
         Instance.new("UICorner",nameBox).CornerRadius=UDim.new(0,4)
-
-        -- Pilih replay
         r.Selected = r.Selected or false
         local selectBtn = createButton(item,"☐",UDim2.new(0.55,0,0.15,0),Color3.fromRGB(100,100,100))
         selectBtn.Size=UDim2.new(0,30,0,25)
@@ -193,13 +224,9 @@ local function refreshReplayList()
             r.Selected = not r.Selected
             selectBtn.Text = r.Selected and "☑" or "☐"
         end)
-
-        -- Play button
         local playBtn = createButton(item,"▶",UDim2.new(0.65,0,0.15,0),Color3.fromRGB(70,130,180))
         playBtn.Size=UDim2.new(0,30,0,25)
         playBtn.MouseButton1Click:Connect(function() task.spawn(function() playReplay(r.Frames) end) end)
-
-        -- Delete button
         local delBtn = createButton(item,"🗑",UDim2.new(0.75,0,0.15,0),Color3.fromRGB(220,20,60))
         delBtn.Size=UDim2.new(0,30,0,25)
         delBtn.MouseButton1Click:Connect(function() table.remove(savedReplays,i) refreshReplayList() end)
@@ -217,7 +244,10 @@ recordBtn.MouseButton1Click:Connect(function()
         stopRecording()
     end
 end)
-pauseBtn.MouseButton1Click:Connect(function() isPaused=not isPaused end)
+pauseBtn.MouseButton1Click:Connect(function()
+    isPaused = not isPaused
+    pauseBtn.Text = isPaused and "▶ Resume" or "⏸ Pause"
+end)
 saveBtn.MouseButton1Click:Connect(function()
     if #recordData>0 then
         table.insert(savedReplays,{Frames=recordData,Name="Replay "..(#savedReplays+1)})
@@ -235,7 +265,6 @@ mergeBtn.MouseButton1Click:Connect(function()
     if #merged>0 then task.spawn(function() playReplay(merged) end) end
 end)
 
--- Minimize
 local minimized=false
 minimizeBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
@@ -243,47 +272,17 @@ minimizeBtn.MouseButton1Click:Connect(function()
     mainFrame.Size = minimized and UDim2.new(0,200,0,50) or UDim2.new(0,360,0,500)
 end)
 
--- ===== Loading Screen =====
-local loadingGui = Instance.new("ScreenGui",playerGui)
-loadingGui.Name = "FATTANHUB_Loading"
-
-local loadingFrame = Instance.new("Frame",loadingGui)
-loadingFrame.Size=UDim2.new(1,0,1,0)
-loadingFrame.BackgroundColor3=Color3.fromRGB(15,15,15)
-
-local loadingLabel = Instance.new("TextLabel",loadingFrame)
-loadingLabel.Size=UDim2.new(0.8,0,0,80)
-loadingLabel.Position=UDim2.new(0.1,0,0.4,0)
-loadingLabel.BackgroundTransparency=1
-loadingLabel.Text="FATTANHUB👑"
-loadingLabel.TextColor3=Color3.fromRGB(255,215,0)
-loadingLabel.Font=Enum.Font.GothamBlack
-loadingLabel.TextScaled=true
-loadingLabel.TextStrokeTransparency=0
-loadingLabel.TextXAlignment=Enum.TextXAlignment.Center
-loadingLabel.TextYAlignment=Enum.TextYAlignment.Center
-
-local barBack=Instance.new("Frame",loadingFrame)
-barBack.Size=UDim2.new(0.6,0,0,20)
-barBack.Position=UDim2.new(0.2,0,0.6,0)
-barBack.BackgroundColor3=Color3.fromRGB(50,50,50)
-Instance.new("UICorner",barBack).CornerRadius=UDim.new(0,10)
-
-local barFront=Instance.new("Frame",barBack)
-barFront.Size=UDim2.new(0,0,1,0)
-barFront.BackgroundColor3=Color3.fromRGB(255,215,0)
-Instance.new("UICorner",barFront).CornerRadius=UDim.new(0,10)
-
--- Animasi 5 detik
-mainFrame.Visible=false
+-- ===== Loading Animation =====
 task.spawn(function()
-    local startTime=tick()
-    while tick()-startTime<5 do
-        local progress=(tick()-startTime)/5
-        barFront.Size=UDim2.new(progress,0,1,0)
-        loadingLabel.TextTransparency=math.abs(math.sin(tick()*2))*0.2
-        RunService.RenderStepped:Wait()
+    local startTime = tick()
+    local duration = 5
+    while tick()-startTime < duration do
+        local progress = (tick()-startTime)/duration
+        barFront.Size = UDim2.new(progress,0,1,0)
+        RunService.Heartbeat:Wait()
     end
+    barFront.Size = UDim2.new(1,0,1,0)
+    wait(0.2)
     loadingGui:Destroy()
-    mainFrame.Visible=true
+    mainFrame.Visible = true
 end)
