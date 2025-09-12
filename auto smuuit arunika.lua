@@ -1,7 +1,6 @@
--- 🏔️ AUTO SUMMIT PRO V13 🏔️
--- by ChatGPT
--- 🚀 AutoPlay | NextCP | ManualCP | Noclip | AntiAFK
--- ✅ Support Checkpoint Asli Arunika (bunyi + save)
+-- 🏔️ AUTO SUMMIT PRO V14 - All in One
+-- ✅ Noclip / Anti AFK / Auto Play / Manual CP / Saved CP
+-- ✅ Checkpoint asli Arunika kedetect + bunyi + save
 
 -- ==================================================
 -- Services
@@ -15,7 +14,7 @@ local character = player.Character or player.CharacterAdded:Wait()
 local root = character:WaitForChild("HumanoidRootPart")
 
 -- ==================================================
--- Update root tiap respawn
+-- Respawn handling
 local function bindCharacter(newChar)
     character = newChar
     root = character:WaitForChild("HumanoidRootPart")
@@ -33,10 +32,16 @@ local status = {
 -- ==================================================
 -- Noclip
 RunService.Stepped:Connect(function()
-    if status.noclip and character then
-        for _, part in pairs(character:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then
-                part.CanCollide = false
+    if character then
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                if status.noclip then
+                    part.CanCollide = false
+                else
+                    if part.Name ~= "HumanoidRootPart" then
+                        part.CanCollide = true
+                    end
+                end
             end
         end
     end
@@ -52,7 +57,7 @@ player.Idled:Connect(function()
 end)
 
 -- ==================================================
--- Ambil semua checkpoint asli
+-- Checkpoint System
 local function getGameCheckpoints()
     local cps = {}
     for _, obj in ipairs(workspace:GetDescendants()) do
@@ -75,15 +80,62 @@ local function tweenTo(targetCFrame, duration)
     tween.Completed:Wait()
 end
 
--- ==================================================
--- Auto Play Semua CP
+-- Saved CP
+local savedCPs = {}
+
+local function addSavedCPButton(cp)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 28)
+    btn.Position = UDim2.new(0,5,0,#savedCPs*32)
+    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 14
+    btn.Text = "Saved CP "..#savedCPs
+    btn.Parent = savedFrame
+
+    btn.MouseButton1Click:Connect(function()
+        tweenTo(cp.CFrame + Vector3.new(0,3,0),2)
+        firetouchinterest(root, cp, 0)
+        task.wait(0.2)
+        firetouchinterest(root, cp, 1)
+    end)
+end
+
+local savedFrame = Instance.new("ScrollingFrame")
+savedFrame.Size = UDim2.new(1, -10, 0, 150)
+savedFrame.Position = UDim2.new(0,5,0,200)
+savedFrame.BackgroundTransparency = 0.5
+savedFrame.CanvasSize = UDim2.new(0,0,2,0)
+savedFrame.ScrollBarThickness = 6
+savedFrame.Parent = nil -- nanti diparent ke frame GUI
+
+local function saveCP(cp)
+    if not table.find(savedCPs, cp) then
+        table.insert(savedCPs, cp)
+        addSavedCPButton(cp)
+    end
+end
+
+-- Teleport + trigger CP asli
+local function touchPart(cp)
+    if root and cp then
+        firetouchinterest(root, cp, 0)
+        task.wait(0.2)
+        firetouchinterest(root, cp, 1)
+        saveCP(cp)
+    end
+end
+
+-- Auto Play semua CP
 local function playAllCP()
     status.autoPlay = true
     local cps = getGameCheckpoints()
     for _, cp in ipairs(cps) do
         if not status.autoPlay then break end
         tweenTo(cp.CFrame + Vector3.new(0,3,0), 2)
-        task.wait(4) -- biar bunyi + save checkpoint
+        touchPart(cp)
+        task.wait(4)
     end
 end
 
@@ -106,6 +158,7 @@ local function playNextCP()
     end
     if nextCP then
         tweenTo(nextCP.CFrame + Vector3.new(0,3,0), 2)
+        touchPart(nextCP)
         task.wait(4)
     else
         warn("⚠️ Tidak ada CP berikutnya")
@@ -115,6 +168,7 @@ end
 -- Manual CP
 local function playOneCP(cp)
     tweenTo(cp.CFrame + Vector3.new(0,3,0), 2)
+    touchPart(cp)
     task.wait(4)
 end
 
@@ -125,7 +179,7 @@ screenGui.Name = "AutoSummitGui"
 screenGui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 380)
+frame.Size = UDim2.new(0, 280, 0, 380)
 frame.Position = UDim2.new(0.35, 0, 0.25, 0)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Active = true
@@ -135,7 +189,7 @@ frame.Parent = screenGui
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-title.Text = "🏔️ Auto Summit PRO V13"
+title.Text = "🏔️ Auto Summit PRO V14"
 title.TextColor3 = Color3.fromRGB(255,255,255)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 16
@@ -143,18 +197,20 @@ title.Parent = frame
 
 local scrolling = Instance.new("ScrollingFrame")
 scrolling.Size = UDim2.new(1, -10, 1, -40)
-scrolling.Position = UDim2.new(0, 5, 0, 35)
-scrolling.CanvasSize = UDim2.new(0, 0, 6, 0)
+scrolling.Position = UDim2.new(0,5,0,35)
+scrolling.CanvasSize = UDim2.new(0,0,6,0)
 scrolling.BackgroundTransparency = 1
 scrolling.ScrollBarThickness = 6
 scrolling.Parent = frame
 
--- Toggle dengan lampu
+savedFrame.Parent = frame
+
+-- Toggle + tombol
 local function makeToggle(text, order, stateTable, key)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.8, -10, 0, 28)
-    btn.Position = UDim2.new(0, 5, 0, (order-1)*32)
-    btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    btn.Size = UDim2.new(0.8,-10,0,28)
+    btn.Position = UDim2.new(0,5,0,(order-1)*32)
+    btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255,255,255)
     btn.Font = Enum.Font.SourceSansBold
@@ -163,7 +219,7 @@ local function makeToggle(text, order, stateTable, key)
 
     local lamp = Instance.new("Frame")
     lamp.Size = UDim2.new(0,20,0,20)
-    lamp.Position = UDim2.new(1, -30, 0.5, -10)
+    lamp.Position = UDim2.new(1,-30,0.5,-10)
     lamp.BackgroundColor3 = Color3.fromRGB(200,0,0)
     lamp.Parent = btn
 
@@ -173,12 +229,11 @@ local function makeToggle(text, order, stateTable, key)
     end)
 end
 
--- Tombol biasa
 local function makeButton(text, order, callback, parent)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 28)
-    btn.Position = UDim2.new(0, 5, 0, (order-1)*32)
-    btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    btn.Size = UDim2.new(1,-10,0,28)
+    btn.Position = UDim2.new(0,5,0,(order-1)*32)
+    btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255,255,255)
     btn.Font = Enum.Font.SourceSansBold
@@ -190,17 +245,17 @@ end
 
 -- ==================================================
 -- Tambah tombol utama
-makeToggle("🚪 Noclip", 1, status, "noclip")
-makeToggle("🕹️ Anti AFK", 2, status, "antiAfk")
-makeButton("▶️ Auto Play Semua CP", 3, playAllCP)
-makeButton("⏹️ Stop Auto Play", 4, stopAutoPlay)
-makeButton("⏭️ Next CP (1x)", 5, playNextCP)
+makeToggle("🚪 Noclip",1,status,"noclip")
+makeToggle("🕹️ Anti AFK",2,status,"antiAfk")
+makeButton("▶️ Auto Play Semua CP",3,playAllCP)
+makeButton("⏹️ Stop Auto Play",4,stopAutoPlay)
+makeButton("⏭️ Next CP (1x)",5,playNextCP)
 
 -- Manual CP list
 local cps = getGameCheckpoints()
 local yOffset = 6
 for i, cp in ipairs(cps) do
-    makeButton("▶️ CP"..i, yOffset+i, function()
+    makeButton("▶️ CP"..i, yOffset+i,function()
         playOneCP(cp)
     end)
 end
