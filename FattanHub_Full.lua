@@ -1,10 +1,8 @@
-
--- FATTAN HUB - MERGED (Gabungan script pertama + kedua)
--- Full commented version (Login + Loading + Main GUI + Features)
+-- FATTAN HUB - FINAL ALL IN ONE (password + tap-fly + rope3D + invisible-fling + mobile tweaks)
 -- Password: fattanhubGG
+-- Paste to executor / LocalScript (must be allowed to create CoreGui elements)
 -- NOTE: Replace logoAsset with your uploaded Roblox decal asset id, e.g. "rbxassetid://1234567890"
 
--- Services
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -12,27 +10,23 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local Camera = Workspace.CurrentCamera
-local TeleportService = game:GetService("TeleportService")
-local VirtualUser = game:GetService("VirtualUser")
-
 local LocalPlayer = Players.LocalPlayer
 
--- If LocalPlayer not ready (rare), wait
+-- Gambar logo untuk ikon minimize (ganti dengan asset id milikmu)
+local logoAsset = "rbxassetid://6031068426" -- <-- ganti ini dengan asset logo kamu
+
 if not LocalPlayer then
     LocalPlayer = Players.PlayerAdded:Wait()
 end
 
--- Ganti dengan asset logo kamu (opsional)
-local logoAsset = "rbxassetid://6031068426" -- ubah sesuai asset id mu
-
--- Safe character getter
-local function safeChar()
+-- Helper: safe get character
+local function getChar()
     return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 end
 
--- ====================================================
--- LOGIN UI (dari script kedua, dipakai sebagai entry)
--- ====================================================
+-- ===========
+-- Login UI
+-- ===========
 local function createLogin(onSuccess)
     local loginGui = Instance.new("ScreenGui")
     loginGui.Name = "FattanLogin"
@@ -87,7 +81,7 @@ local function createLogin(onSuccess)
     btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.TextColor3 = Color3.new(1,1,1)
 
-    local correctPassword = "fattanhubGG"
+    local correctPassword = "INITRIAL"
 
     local function tryLogin()
         local v = tostring(box.Text or "")
@@ -107,93 +101,58 @@ local function createLogin(onSuccess)
     end)
 end
 
--- ====================================================
--- MAIN (dari script kedua) + tambahan fitur dari pertama
--- ===================================================--=========================================================
--- 🔐 Login System
---=========================================================
-local player = game.Players.LocalPlayer
-local TweenService = game:GetService("TweenService")
-local correctPass = "fattanhubGG"
+-- ===========
+-- Main script (wrapped in function to call after login)
+-- ===========
+local function initMain()
+    -- ---------- Loading ----------
+    local loadingGui = Instance.new("ScreenGui")
+    loadingGui.Name = "FattanLoading"
+    loadingGui.ResetOnSpawn = false
+    loadingGui.Parent = CoreGui
 
--- Login GUI
-local loginGui = Instance.new("ScreenGui", player.PlayerGui)
-local loginFrame = Instance.new("Frame", loginGui)
-loginFrame.Size = UDim2.new(0.3,0,0.25,0)  -- kecil
-loginFrame.Position = UDim2.new(0.35,0,0.35,0) -- tengah
-loginFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-Instance.new("UICorner", loginFrame).CornerRadius = UDim.new(0,10)
+    local loadFrame = Instance.new("Frame", loadingGui)
+    loadFrame.Size = UDim2.new(1,0,1,0)
+    loadFrame.BackgroundColor3 = Color3.fromRGB(6, 36, 90)
 
-local passBox = Instance.new("TextBox", loginFrame)
-passBox.PlaceholderText = "Password"
-passBox.Size = UDim2.new(0.8,0,0.3,0)
-passBox.Position = UDim2.new(0.1,0,0.25,0)
-passBox.TextColor3 = Color3.new(1,1,1)
-passBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
-Instance.new("UICorner", passBox).CornerRadius = UDim.new(0,6)
+    local loadLabel = Instance.new("TextLabel", loadFrame)
+    loadLabel.Size = UDim2.new(1,0,1,0)
+    loadLabel.BackgroundTransparency = 1
+    loadLabel.Text = "FATTAN HUB"
+    loadLabel.Font = Enum.Font.GothamBold
+    loadLabel.TextSize = 36
+    loadLabel.TextColor3 = Color3.new(1,1,1)
 
-local loginBtn = Instance.new("TextButton", loginFrame)
-loginBtn.Text = "Login"
-loginBtn.Size = UDim2.new(0.5,0,0.25,0)
-loginBtn.Position = UDim2.new(0.25,0,0.65,0)
-loginBtn.BackgroundColor3 = Color3.fromRGB(0,170,255)
-loginBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", loginBtn).CornerRadius = UDim.new(0,6)
+    task.wait(0.9)
+    TweenService:Create(loadFrame, TweenInfo.new(0.8), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(loadLabel, TweenInfo.new(0.8), {TextTransparency = 1}):Play()
+    task.wait(0.8)
+    loadingGui:Destroy()
 
---=========================================================
--- 🌟 Main GUI
---=========================================================
-local mainGui = Instance.new("ScreenGui", player.PlayerGui)
-mainGui.Enabled = false
+    -- ---------- Main GUI (smaller for mobile) ----------
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "FattanHub"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = CoreGui
 
-local mainFrame = Instance.new("Frame", mainGui)
-mainFrame.Size = UDim2.new(0.3,0,0.45,0) -- kecil
-mainFrame.Position = UDim2.new(0.35,0,0.25,0) -- tengah
-mainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0,10)
-local stroke = Instance.new("UIStroke", mainFrame)
-stroke.Thickness = 2
-stroke.Color = Color3.fromRGB(0,170,255)
+    local mainFrame = Instance.new("Frame", screenGui)
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 260, 0, 420) -- slightly bigger but still mobile-friendly
+    mainFrame.Position = UDim2.new(0.35,0,0.18,0)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(8, 44, 110)
+    mainFrame.Active = true
+    mainFrame.Draggable = true
 
-local uiList = Instance.new("UIListLayout", mainFrame)
-uiList.SortOrder = Enum.SortOrder.LayoutOrder
-uiList.Padding = UDim.new(0,6)
+    local title = Instance.new("TextLabel", mainFrame)
+    title.Size = UDim2.new(1,0,0,36)
+    title.Position = UDim2.new(0,0,0,0)
+    title.BackgroundColor3 = Color3.fromRGB(4, 110, 200)
+    title.Text = "FATTAN HUB"
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18
+    title.TextColor3 = Color3.new(1,1,1)
+    title.BackgroundTransparency = 0
 
--- Minimize Logo
-local logoBtn = Instance.new("TextButton", mainGui)
-logoBtn.Text = "⚡"
-logoBtn.Size = UDim2.new(0.08,0,0.08,0)
-logoBtn.Position = UDim2.new(0,0,0.92,0)
-logoBtn.BackgroundColor3 = Color3.fromRGB(0,170,255)
-logoBtn.TextColor3 = Color3.new(1,1,1)
-logoBtn.Font = Enum.Font.GothamBold
-logoBtn.TextScaled = true
-logoBtn.MouseButton1Click:Connect(function()
-	mainFrame.Visible = not mainFrame.Visible
-end)
-
--- Helper
-local function createCategory(title)
-	local cat = Instance.new("TextLabel", mainFrame)
-	cat.Size = UDim2.new(1,0,0,30)
-	cat.Text = "🔹 "..title
-	cat.TextColor3 = Color3.new(1,1,1)
-	cat.Font = Enum.Font.GothamBold
-	cat.TextScaled = true
-	cat.BackgroundColor3 = Color3.fromRGB(45,45,45)
-	return cat
-end
-local function createBtn(text,callback)
-	local btn = Instance.new("TextButton", mainFrame)
-	btn.Size = UDim2.new(1,0,0,30)
-	btn.Text = text
-	btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
-	btn.TextColor3 = Color3.new(1,1,1)
-	btn.Font = Enum.Font.GothamBold
-	btn.TextScaled = true
-	btn.MouseButton1Click:Connect(function() callback(btn) end)
-	return btn
-end
     -- minimize and exit buttons (top-right)
     local exitBtn = Instance.new("TextButton", mainFrame)
     exitBtn.Size = UDim2.new(0,26,0,22)
@@ -263,16 +222,24 @@ end
         return btn
     end
 
-    -- Keep mouse reference
+    -- references for features that exist in original big file
+    -- We'll implement/replace and keep names similar to your original structure.
+
+    -- ---------- helper get char ----------
+    local function safeChar()
+        return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    end
+
+    -- keep mouse reference
     local mouse = LocalPlayer:GetMouse()
 
     -- ============================
-    -- FLY (Joystick + Up/Down panel) - dari script kedua
+    -- Fly (Joystick Mode) -> ***DI-GANTI DENGAN VERSI JOYSTICK + UP/DOWN + PANEL DRAGGABLE*** 
     -- ============================
     local flying = false
     local flyBV, flyBG, flyConn
     local flySpeed = 80 -- default
-    -- UI controls for fly speed
+    -- UI controls for fly speed (kept in main frame)
     local flyRow = Instance.new("Frame", mainFrame)
     flyRow.Size = UDim2.new(1,-12,0,34)
     flyRow.BackgroundTransparency = 1
@@ -303,7 +270,7 @@ end
         setFlySpeed(flyValue.Text)
     end)
 
-    -- Fly control panel (draggable)
+    -- create a draggable Fly control panel (separate from main menu)
     local flyPanel = Instance.new("Frame")
     flyPanel.Name = "FlyPanel"
     flyPanel.Size = UDim2.new(0,180,0,140)
@@ -322,6 +289,7 @@ end
     fpTitle.TextSize = 14
     fpTitle.TextColor3 = Color3.new(1,1,1)
 
+    -- Fly toggle inside panel
     local fpToggle = Instance.new("TextButton", flyPanel)
     fpToggle.Size = UDim2.new(0.9,0,0,28)
     fpToggle.Position = UDim2.new(0.05,0,0,34)
@@ -331,6 +299,7 @@ end
     fpToggle.BackgroundColor3 = Color3.fromRGB(40,100,180)
     fpToggle.TextColor3 = Color3.new(1,1,1)
 
+    -- Up / Down buttons
     local upBtn = Instance.new("TextButton", flyPanel)
     upBtn.Size = UDim2.new(0.4,0,0,28)
     upBtn.Position = UDim2.new(0.05,0,0,70)
@@ -349,6 +318,7 @@ end
     downBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
     downBtn.TextColor3 = Color3.new(1,1,1)
 
+    -- Speed label inside panel (mirror)
     local spLbl = Instance.new("TextLabel", flyPanel)
     spLbl.Size = UDim2.new(0.9,0,0,20)
     spLbl.Position = UDim2.new(0.05,0,0,104)
@@ -358,19 +328,22 @@ end
     spLbl.TextSize = 14
     spLbl.TextColor3 = Color3.new(1,1,1)
 
+    -- Update spLbl when flySpeed changes from main UI
     flyValue.Changed:Connect(function()
         spLbl.Text = "Speed: "..tostring(flySpeed)
     end)
 
+    -- up/down behavior: apply small vertical velocity while pressed
     local upHold = false
     local downHold = false
-    local verticalSpeed = 60
+    local verticalSpeed = 60 -- up/down speed when hold
 
     upBtn.MouseButton1Down:Connect(function() upHold = true end)
     upBtn.MouseButton1Up:Connect(function() upHold = false end)
     downBtn.MouseButton1Down:Connect(function() downHold = true end)
     downBtn.MouseButton1Up:Connect(function() downHold = false end)
 
+    -- Toggle button uses same flying logic as main toggle (keep both synced)
     local function startFly()
         if flying then return end
         flying = true
@@ -396,18 +369,21 @@ end
             local hrp = safeChar():FindFirstChild("HumanoidRootPart")
             local hum = safeChar():FindFirstChildOfClass("Humanoid")
             if not hrp or not hum then return end
+            -- horizontal move by MoveDirection (joystick/WASD)
             local moveDir = hum.MoveDirection
             local vx, vy, vz = 0, 0, 0
             if moveDir.Magnitude > 0 then
                 local v = moveDir.Unit * flySpeed
                 vx, vy, vz = v.X, v.Y, v.Z
             end
+            -- vertical component from up/down hold
             if upHold then
                 vy = verticalSpeed
             elseif downHold then
                 vy = -verticalSpeed
             end
             flyBV.Velocity = Vector3.new(vx, vy, vz)
+            -- keep orientation stable
             flyBG.CFrame = hrp.CFrame
         end)
     end
@@ -433,7 +409,7 @@ end
     end)
 
     -- ============================
-    -- ESP (Highlight + NameTag)
+    -- ESP (small name)
     -- ============================
     local espEnabled = false
     local function addNameTag(p)
@@ -477,7 +453,7 @@ end
     Players.PlayerRemoving:Connect(function(p) pcall(removeNameTag,p) end)
 
     -- ============================
-    -- Player List (Teleport / Freeze / Select for rope)
+    -- Player List (teleport/freeze/selected for rope)
     -- ============================
     local playerFrame = Instance.new("Frame", mainFrame)
     playerFrame.Size = UDim2.new(1,-12,0,120)
@@ -558,9 +534,10 @@ end
     end)
 
     -- ============================
-    -- Elastic Rope (visual pull) - Toggle
+    -- Pull Selected (Elastic Rope 3D) -> TOGGLE ON/OFF (visual pull only)
     -- ============================
-    local activeRope = {}
+    -- We'll store active rope state per-target for safety.
+    local activeRope = {} -- [player] = {att1, att2, beam, conn}
 
     local function cleanRopeForPlayer(player)
         if not player then return end
@@ -576,11 +553,13 @@ end
         end
     end
 
+    -- Toggle function
     createButton("Tarik Tali (3D) - Toggle", function()
         if not selected then return end
         local targetPlayer = Players:FindFirstChild(selected)
         if not targetPlayer then return end
 
+        -- if already active -> clean
         if activeRope[targetPlayer] then
             cleanRopeForPlayer(targetPlayer)
             return
@@ -593,13 +572,16 @@ end
         local myhrp = mychar:FindFirstChild("HumanoidRootPart")
         if not thrp or not myhrp then return end
 
+        -- avoid duplicate
         if thrp:FindFirstChild("FattanElasticRope_Att2") then return end
 
+        -- attachments
         local att1 = Instance.new("Attachment", myhrp)
         att1.Name = "FattanElasticRope_Att1"
         local att2 = Instance.new("Attachment", thrp)
         att2.Name = "FattanElasticRope_Att2"
 
+        -- Beam visual (kept similar)
         local ropeBeam = Instance.new("Beam", myhrp)
         ropeBeam.Name = "FattanElasticRope_Beam"
         ropeBeam.Attachment0 = att1
@@ -614,10 +596,12 @@ end
         ropeBeam.Color = ColorSequence.new(Color3.fromRGB(139,69,19))
         ropeBeam.Parent = myhrp
 
+        -- initial curve
         ropeBeam.CurveSize0 = math.clamp((myhrp.Position - thrp.Position).Magnitude / 30, 0, 1.5)
         ropeBeam.CurveSize1 = ropeBeam.CurveSize0 * 0.6
 
-        local minDistance = 6
+        -- Visual pull: use RenderStepped for smooth per-frame visual movement (client-side only)
+        local minDistance = 6 -- minimal jarak agar tidak nempel
         local pulling = true
         local rsConn
         rsConn = RunService.RenderStepped:Connect(function(dt)
@@ -627,22 +611,26 @@ end
                 return
             end
 
+            -- update curve based on current distance
             local dist = (att1.WorldPosition - att2.WorldPosition).Magnitude
             local curve = math.clamp(1.5 - (dist/60), 0, 1.5)
             ropeBeam.CurveSize0 = curve
             ropeBeam.CurveSize1 = curve * 0.6
 
+            -- visual pull: move target HRP towards myhrp but keep minDistance
             if thrp.Parent and myhrp.Parent then
                 local dir = myhrp.Position - thrp.Position
                 local d = dir.Magnitude
                 if d > minDistance then
                     local targetPos = myhrp.Position - dir.Unit * minDistance
+                    -- smooth lerp for natural motion (0.12-0.2 smoothing)
                     local newCFrame = thrp.CFrame:Lerp(CFrame.new(targetPos, targetPos + thrp.CFrame.LookVector), 0.15)
                     thrp.CFrame = newCFrame
                 end
             end
         end)
 
+        -- save into activeRope
         activeRope[targetPlayer] = {
             att1 = att1,
             att2 = att2,
@@ -652,6 +640,7 @@ end
             minDistance = minDistance,
         }
 
+        -- cleanup when player leaves or dies
         local charRemCon
         charRemCon = targetPlayer.CharacterRemoving:Connect(function()
             cleanRopeForPlayer(targetPlayer)
@@ -659,6 +648,7 @@ end
         end)
     end)
 
+    -- Add a manual cleanup button (optional)
     createButton("Stop All Ropes", function()
         for pl,_ in pairs(activeRope) do
             cleanRopeForPlayer(pl)
@@ -666,7 +656,7 @@ end
     end)
 
     -- ============================
-    -- Delete Parts (scan, click confirm, restore)
+    -- Delete Parts (scan, click confirm, restore) and confirm GUI moved to left-middle
     -- ============================
     local scanning = false
     local original = {}
@@ -678,7 +668,7 @@ end
 
     local confFrame = Instance.new("Frame", confirmGui)
     confFrame.Size = UDim2.new(0,220,0,110)
-    confFrame.Position = UDim2.new(0, 10, 0.5, -55)
+    confFrame.Position = UDim2.new(0, 10, 0.5, -55) -- left-middle
     confFrame.BackgroundColor3 = Color3.fromRGB(24,24,24)
 
     local confLabel = Instance.new("TextLabel", confFrame)
@@ -761,65 +751,10 @@ end
         end
         original = {}
     end)
-createButton("Restore Parts", function() stopScan() end)
-    
---=========================================================
--- 🔄 Extra Features
---=========================================================
-createCategory("Extra")
-
--- 🚪 Noclip
-local noclipEnabled = false
-createBtn("🚪 Noclip: OFF", function(btn)
-    noclipEnabled = not noclipEnabled
-    btn.Text = noclipEnabled and "🚪 Noclip: ON" or "🚪 Noclip: OFF"
-end)
-game:GetService("RunService").Stepped:Connect(function()
-    if noclipEnabled and player.Character then
-        for _, part in ipairs(player.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
-    end
-end)
-
--- 💀 Auto Respawn
-local autoRespawnEnabled = false
-createBtn("💀 Auto Respawn: OFF", function(btn)
-    autoRespawnEnabled = not autoRespawnEnabled
-    btn.Text = autoRespawnEnabled and "💀 Auto Respawn: ON" or "💀 Auto Respawn: OFF"
-
-    if autoRespawnEnabled then
-        player.CharacterAdded:Connect(function(char)
-            char:WaitForChild("Humanoid").Died:Connect(function()
-                if autoRespawnEnabled then
-                    task.wait(2)
-                    player:LoadCharacter()
-                end
-            end)
-        end)
-    end
-end)
-
--- 🔁 Auto Rejoin
-local autoRejoinEnabled = false
-createBtn("🔁 Auto Rejoin: OFF", function(btn)
-    autoRejoinEnabled = not autoRejoinEnabled
-    btn.Text = autoRejoinEnabled and "🔁 Auto Rejoin: ON" or "🔁 Auto Rejoin: OFF"
-
-    if autoRejoinEnabled then
-        player.OnTeleport:Connect(function(State)
-            if State == Enum.TeleportState.Failed and autoRejoinEnabled then
-                task.wait(2)
-                game:GetService("TeleportService"):Teleport(game.PlaceId, player)
-            end
-        end)
-    end
-end)
+    createButton("Restore Parts", function() stopScan() end)
 
     -- ============================
-    -- WalkFling (Invisible Block)
+    -- WalkFling (Invisible Block, does not spin character)
     -- ============================
     local flingOn = false
     local flingConn = nil
@@ -840,6 +775,7 @@ end)
         flingPart.Massless = true
         flingPart.Parent = workspace
 
+        -- weld so it follows HRP
         local weld = Instance.new("WeldConstraint", flingPart)
         weld.Part0 = flingPart
         weld.Part1 = hrp
@@ -851,7 +787,7 @@ end)
         flingConn = RunService.Heartbeat:Connect(function()
             if not flingOn or not hrp.Parent or not flingPart.Parent then return end
             local forward = hrp.CFrame.LookVector
-            flingBV.Velocity = forward * 160
+            flingBV.Velocity = forward * 160 -- adjust power here
         end)
     end
 
@@ -867,12 +803,13 @@ end)
         if flingOn then stopFlingInvisible() else startFlingInvisible() end
     end)
 
+    -- ensure re-enable on respawn if toggle was on
     LocalPlayer.CharacterAdded:Connect(function()
         if flingOn then task.wait(0.8); pcall(startFlingInvisible) end
     end)
 
     -- ============================
-    -- Run & Jump controls (UI rows)
+    -- Run & Jump controls (kept from original, adjusted UI sizing)
     -- ============================
     local runVal = 16
     local jumpVal = 50
@@ -923,7 +860,7 @@ end)
     end)
 
     -- ============================
-    -- Owner Crown
+    -- Owner Crown small
     -- ============================
     local function createOwnerCrown()
         local char = LocalPlayer.Character
@@ -940,67 +877,14 @@ end)
     LocalPlayer.CharacterAdded:Connect(function() task.wait(0.7); pcall(createOwnerCrown) end)
 
     -- ============================
-    -- Contact Label
+    -- Contact
     -- ============================
     local contact = Instance.new("TextLabel", mainFrame)
     contact.Size = UDim2.new(1,-12,0,28); contact.BackgroundTransparency = 1; contact.Position = UDim2.new(0,6,1,-34)
     contact.Text = "Contact: FattanHub v3.0"; contact.Font = Enum.Font.SourceSansBold; contact.TextSize = 12; contact.TextColor3 = Color3.new(0.88,0.88,0.88)
 
-    -- ====================================================
-    -- Tambahan dari script pertama: Noclip, Auto-Respawn, Auto-Rejoin, Anti-AFK
-    -- ====================================================
-    -- Noclip
-    local noclipEnabled = false
-    createButton("🚪 Noclip: OFF", function(btn)
-        noclipEnabled = not noclipEnabled
-        btn.Text = noclipEnabled and "🚪 Noclip: ON" or "🚪 Noclip: OFF"
-    end)
-    RunService.Stepped:Connect(function()
-        if noclipEnabled and LocalPlayer.Character then
-            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    pcall(function() part.CanCollide = false end)
-                end
-            end
-        end
-    end)
-
-    -- Auto Respawn (client-side attempt: tries to call LoadCharacter, but best used on server)
-    LocalPlayer.CharacterAdded:Connect(function(char)
-        -- In original first script, they tried to reconnect to respawn; we keep a client-side attempt:
-        local hum = char:WaitForChild("Humanoid")
-        hum.Died:Connect(function()
-            -- client cannot reliably force respawn on server; we attempt to call LoadCharacter
-            pcall(function() LocalPlayer:LoadCharacter() end)
-        end)
-    end)
-
-    -- Auto Rejoin behavior (best-effort client side)
-    LocalPlayer.OnTeleport:Connect(function(State)
-        if State == Enum.TeleportState.Failed then
-            task.wait(2)
-            pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
-        end
-    end)
-    -- PlayerRemoving rejoin attempt (client cannot do much but we keep best-effort)
-    game.Players.PlayerRemoving:Connect(function(leaver)
-        if leaver == LocalPlayer then
-            task.wait(2)
-            pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
-        end
-    end)
-
-    -- Anti-AFK (VirtualUser)
-    pcall(function()
-        LocalPlayer.Idled:Connect(function()
-            VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-            task.wait(1)
-            VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        end)
-    end)
-
-    -- Final cleanup note: to remove GUI entirely -> CoreGui:FindFirstChild("FattanHub"):Destroy()
+    -- Final cleanup note
+    -- If you want to completely remove GUI from CoreGui: CoreGui:FindFirstChild("FattanHub"):Destroy()
 end
-
 -- Run: show login first, then init main on correct password
 createLogin(initMain)
