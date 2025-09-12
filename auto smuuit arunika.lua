@@ -1,11 +1,9 @@
--- 🔥 AUTO SUMMIT PRO V12 🔥
--- ✅ Save / Delete / Rename CP
--- ✅ Export / Import CP
--- ✅ AutoPlay TweenService (smooth, anti-detect)
--- ✅ Manual Play CP Tween
--- ✅ Respawn Safe
--- ✅ GUI compact (300x280, draggable)
--- ✅ Toggle features ON/OFF + indikator lampu
+-- 🔥 AUTO SUMMIT PRO V12.4 🔥
+-- ✅ AutoPlay + NextCP + Manual CP list
+-- ✅ Noclip, Anti AFK, Save/Delete, Export/Import
+-- ✅ Transparent CP helper (checkpoint asli ter-detect)
+-- ✅ GUI compact draggable + lampu indikator
+-- ✅ Respawn safe
 
 -- ==================================================
 -- Services
@@ -65,23 +63,21 @@ player.Idled:Connect(function()
 end)
 
 -- ==================================================
--- ➕ SIMPAN CP
+-- ➕ SIMPAN CP (helper transparan di bawah kaki)
 local function createCheckpoint(cpName, position)
     if not mainFolder:FindFirstChild(cpName) then
         local cp = Instance.new("Part")
         cp.Name = cpName
         cp.Anchored = true
-        cp.CanCollide = true
-        cp.Size = Vector3.new(4,1,4)
-        cp.Position = position
-        cp.Color = Color3.fromRGB(255, 200, 0)
-        cp.TopSurface = Enum.SurfaceType.Smooth
-        cp.BottomSurface = Enum.SurfaceType.Smooth
+        cp.CanCollide = false
+        cp.Transparency = 1
+        cp.Size = Vector3.new(2,1,2)
+        cp.Position = position + Vector3.new(0, -3, 0)
         cp.Parent = mainFolder
     end
 end
 
--- ❌ DELETE CP
+-- ❌ DELETE CP terakhir
 local function deleteLastCheckpoint()
     local cps = mainFolder:GetChildren()
     if #cps > 0 then
@@ -109,15 +105,42 @@ local function playAllCP()
 
     for _, cp in ipairs(cps) do
         if not status.autoPlay then break end
-        local target = cp.CFrame + Vector3.new(0,5,0)
+        local target = cp.CFrame + Vector3.new(0, 3, 0)
         tweenTo(target, 2)
-        task.wait(0.5 + math.random()) -- delay random biar natural
+        for i = 1,4 do
+            if not status.autoPlay then break end
+            task.wait(1)
+        end
+    end
+end
+
+-- 🚩 NEXT CP sekali jalan
+local function playNextCP()
+    local cps = mainFolder:GetChildren()
+    table.sort(cps, function(a,b) return a.Name < b.Name end)
+
+    local currentPos = root.Position
+    local nextCP = nil
+    for _, cp in ipairs(cps) do
+        local dist = (cp.Position - currentPos).Magnitude
+        if dist > 5 then
+            nextCP = cp
+            break
+        end
+    end
+
+    if nextCP then
+        local target = nextCP.CFrame + Vector3.new(0,3,0)
+        tweenTo(target, 2)
+        task.wait(4)
+    else
+        warn("⚠️ Tidak ada CP berikutnya!")
     end
 end
 
 -- 🚩 PLAY MANUAL CP
 local function playOneCP(cp)
-    local target = cp.CFrame + Vector3.new(0,5,0)
+    local target = cp.CFrame + Vector3.new(0, 3, 0)
     tweenTo(target, 2)
 end
 
@@ -159,7 +182,7 @@ screenGui.Name = "AutoSummitGui"
 screenGui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 280)
+frame.Size = UDim2.new(0, 300, 0, 320)
 frame.Position = UDim2.new(0.35, 0, 0.25, 0)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Active = true
@@ -169,7 +192,7 @@ frame.Parent = screenGui
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-title.Text = "🏔️ Auto Summit PRO V12"
+title.Text = "🏔️ Auto Summit PRO V12.4"
 title.TextColor3 = Color3.fromRGB(255,255,255)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 16
@@ -178,12 +201,19 @@ title.Parent = frame
 local scrolling = Instance.new("ScrollingFrame")
 scrolling.Size = UDim2.new(1, -10, 1, -40)
 scrolling.Position = UDim2.new(0, 5, 0, 35)
-scrolling.CanvasSize = UDim2.new(0, 0, 3, 0)
+scrolling.CanvasSize = UDim2.new(0, 0, 5, 0)
 scrolling.BackgroundTransparency = 1
 scrolling.ScrollBarThickness = 6
 scrolling.Parent = frame
 
--- Fungsi buat tombol toggle + lampu
+local cpButtonsFolder = Instance.new("Frame")
+cpButtonsFolder.Size = UDim2.new(1, -10, 0, 200)
+cpButtonsFolder.Position = UDim2.new(0, 0, 0, 220)
+cpButtonsFolder.BackgroundTransparency = 1
+cpButtonsFolder.Parent = scrolling
+
+-- ==================================================
+-- Fungsi buat toggle + lampu
 local function makeToggle(text, order, stateTable, key)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.8, -10, 0, 28)
@@ -208,7 +238,7 @@ local function makeToggle(text, order, stateTable, key)
 end
 
 -- Fungsi buat tombol biasa
-local function makeButton(text, order, callback)
+local function makeButton(text, order, callback, parent)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -10, 0, 28)
     btn.Position = UDim2.new(0, 5, 0, (order-1)*32)
@@ -217,30 +247,30 @@ local function makeButton(text, order, callback)
     btn.TextColor3 = Color3.fromRGB(255,255,255)
     btn.Font = Enum.Font.SourceSansBold
     btn.TextSize = 14
-    btn.Parent = scrolling
+    btn.Parent = parent or scrolling
     btn.MouseButton1Click:Connect(callback)
+    return btn
 end
 
 -- ==================================================
--- Tambah tombol2
+-- Tambah tombol utama
 makeToggle("🚪 Noclip", 1, status, "noclip")
 makeToggle("🕹️ Anti AFK", 2, status, "antiAfk")
 makeButton("➕ Save CP", 3, function()
-    createCheckpoint("CP"..tostring(#mainFolder:GetChildren()+1), root.Position)
+    local cpName = "CP"..tostring(#mainFolder:GetChildren()+1)
+    createCheckpoint(cpName, root.Position)
+
+    makeButton("▶️ "..cpName, #mainFolder:GetChildren(), function()
+        local cp = mainFolder:FindFirstChild(cpName)
+        if cp then playOneCP(cp) end
+    end, cpButtonsFolder)
 end)
-makeButton("🗑️ Delete CP terakhir", 4, function()
-    deleteLastCheckpoint()
-end)
-makeButton("▶️ Auto Play Semua CP", 5, function()
-    playAllCP()
-end)
-makeButton("⏹️ Stop Auto Play", 6, function()
-    status.autoPlay = false
-end)
-makeButton("📤 Export CP", 7, function()
-    exportCheckpoints()
-end)
-makeButton("📥 Import CP (isi link di console)", 8, function()
+makeButton("🗑️ Delete CP terakhir", 4, deleteLastCheckpoint)
+makeButton("▶️ Auto Play Semua CP", 5, playAllCP)
+makeButton("⏹️ Stop Auto Play", 6, function() status.autoPlay = false end)
+makeButton("⏭️ Next CP (1x)", 7, playNextCP)
+makeButton("📤 Export CP", 8, exportCheckpoints)
+makeButton("📥 Import CP (isi link di script)", 9, function()
     local url = "PASTE_LINK_GITHUB_DISINI"
     importCheckpoints(url)
 end)
