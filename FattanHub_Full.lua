@@ -109,49 +109,91 @@ end
 
 -- ====================================================
 -- MAIN (dari script kedua) + tambahan fitur dari pertama
--- ====================================================
-local function initMain()
-    -- ---------- Loading ----------
-    local loadingGui = Instance.new("ScreenGui")
-    loadingGui.Name = "FattanLoading"
-    loadingGui.ResetOnSpawn = false
-    loadingGui.Parent = CoreGui
+-- ===================================================--=========================================================
+-- 🔐 Login System
+--=========================================================
+local player = game.Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local correctPass = "fattanhubGG"
 
-    local loadFrame = Instance.new("Frame", loadingGui)
-    loadFrame.Size = UDim2.new(1,0,1,0)
-    loadFrame.BackgroundColor3 = Color3.fromRGB(6, 36, 90)
+-- Login GUI
+local loginGui = Instance.new("ScreenGui", player.PlayerGui)
+local loginFrame = Instance.new("Frame", loginGui)
+loginFrame.Size = UDim2.new(0.3,0,0.25,0)  -- kecil
+loginFrame.Position = UDim2.new(0.35,0,0.35,0) -- tengah
+loginFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+Instance.new("UICorner", loginFrame).CornerRadius = UDim.new(0,10)
 
-    local loadLabel = Instance.new("TextLabel", loadFrame)
-    loadLabel.Size = UDim2.new(1,0,1,0)
-    loadLabel.BackgroundTransparency = 1
-    loadLabel.Text = "FATTAN HUB"
-    loadLabel.Font = Enum.Font.GothamBold
-    loadLabel.TextSize = 36
-    loadLabel.TextColor3 = Color3.new(1,1,1)
+local passBox = Instance.new("TextBox", loginFrame)
+passBox.PlaceholderText = "Password"
+passBox.Size = UDim2.new(0.8,0,0.3,0)
+passBox.Position = UDim2.new(0.1,0,0.25,0)
+passBox.TextColor3 = Color3.new(1,1,1)
+passBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
+Instance.new("UICorner", passBox).CornerRadius = UDim.new(0,6)
 
-    task.wait(0.9)
-    TweenService:Create(loadFrame, TweenInfo.new(0.8), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(loadLabel, TweenInfo.new(0.8), {TextTransparency = 1}):Play()
-    task.wait(0.8)
-    loadingGui:Destroy()
+local loginBtn = Instance.new("TextButton", loginFrame)
+loginBtn.Text = "Login"
+loginBtn.Size = UDim2.new(0.5,0,0.25,0)
+loginBtn.Position = UDim2.new(0.25,0,0.65,0)
+loginBtn.BackgroundColor3 = Color3.fromRGB(0,170,255)
+loginBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", loginBtn).CornerRadius = UDim.new(0,6)
 
+--=========================================================
 -- 🌟 Main GUI
+--=========================================================
 local mainGui = Instance.new("ScreenGui", player.PlayerGui)
 mainGui.Enabled = false
+
 local mainFrame = Instance.new("Frame", mainGui)
-mainFrame.Size = UDim2.new(0.35, 0, 0.45, 0) -- compact
-mainFrame.Position = UDim2.new(0.325, 0, 0.25, 0) -- center
+mainFrame.Size = UDim2.new(0.3,0,0.45,0) -- kecil
+mainFrame.Position = UDim2.new(0.35,0,0.25,0) -- tengah
 mainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0,12)
-local stroke2 = Instance.new("UIStroke", mainFrame)
-stroke2.Thickness = 2
-stroke2.Color = Color3.fromRGB(0,170,255)
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0,10)
+local stroke = Instance.new("UIStroke", mainFrame)
+stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(0,170,255)
 
 local uiList = Instance.new("UIListLayout", mainFrame)
 uiList.SortOrder = Enum.SortOrder.LayoutOrder
 uiList.Padding = UDim.new(0,6)
 
+-- Minimize Logo
+local logoBtn = Instance.new("TextButton", mainGui)
+logoBtn.Text = "⚡"
+logoBtn.Size = UDim2.new(0.08,0,0.08,0)
+logoBtn.Position = UDim2.new(0,0,0.92,0)
+logoBtn.BackgroundColor3 = Color3.fromRGB(0,170,255)
+logoBtn.TextColor3 = Color3.new(1,1,1)
+logoBtn.Font = Enum.Font.GothamBold
+logoBtn.TextScaled = true
+logoBtn.MouseButton1Click:Connect(function()
+	mainFrame.Visible = not mainFrame.Visible
+end)
 
+-- Helper
+local function createCategory(title)
+	local cat = Instance.new("TextLabel", mainFrame)
+	cat.Size = UDim2.new(1,0,0,30)
+	cat.Text = "🔹 "..title
+	cat.TextColor3 = Color3.new(1,1,1)
+	cat.Font = Enum.Font.GothamBold
+	cat.TextScaled = true
+	cat.BackgroundColor3 = Color3.fromRGB(45,45,45)
+	return cat
+end
+local function createBtn(text,callback)
+	local btn = Instance.new("TextButton", mainFrame)
+	btn.Size = UDim2.new(1,0,0,30)
+	btn.Text = text
+	btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextScaled = true
+	btn.MouseButton1Click:Connect(function() callback(btn) end)
+	return btn
+end
     -- minimize and exit buttons (top-right)
     local exitBtn = Instance.new("TextButton", mainFrame)
     exitBtn.Size = UDim2.new(0,26,0,22)
