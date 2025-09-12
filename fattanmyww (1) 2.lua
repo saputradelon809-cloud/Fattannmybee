@@ -81,7 +81,7 @@ local function createLogin(onSuccess)
     btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.TextColor3 = Color3.new(1,1,1)
 
-    local correctPassword = "fattanhubGG"
+    local correctPassword = "INITRIAL"
 
     local function tryLogin()
         local v = tostring(box.Text or "")
