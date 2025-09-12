@@ -1,12 +1,12 @@
 --[[ 
-🔥 AUTO SUMMIT GUI SYSTEM V5 🔥
+🔥 AUTO SUMMIT GUI SYSTEM V6 🔥 (Fix tombol aktif)
 ================================================
 Fitur:
 ✅ Save CP ke folder (CP1, CP2, dst)
 ✅ List folder CP tampil di GUI
 ✅ Play CP satu-satu (manual)
 ✅ Auto Play semua CP berurutan
-✅ Tombol On/Off untuk Noclip & AntiAFK (lampu indikator)
+✅ Tombol On/Off untuk Noclip & AntiAFK (lampu indikator berfungsi)
 ✅ GUI draggable/geser
 --]]
 
@@ -29,9 +29,11 @@ end
 -- ==================================================
 -- 🔄 STATUS FITUR
 -- ==================================================
-local noclipEnabled = false
-local antiAfkEnabled = false
-local autoPlayEnabled = false
+local status = {
+    noclip = false,
+    antiAfk = false,
+    autoPlay = false
+}
 
 -- ==================================================
 -- ➕ SIMPAN CP KE SUB-FOLDER
@@ -63,7 +65,7 @@ end
 -- 🚪 NOCLIP TANPA BODYVELOCITY
 -- ==================================================
 RunService.Stepped:Connect(function()
-    if noclipEnabled and character then
+    if status.noclip and character then
         for _, part in pairs(character:GetDescendants()) do
             if part:IsA("BasePart") and part.CanCollide then
                 part.CanCollide = false
@@ -77,7 +79,7 @@ end)
 -- ==================================================
 local vu = game:GetService("VirtualUser")
 player.Idled:Connect(function()
-    if antiAfkEnabled then
+    if status.antiAfk then
         vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
         task.wait(1)
         vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
@@ -88,16 +90,16 @@ end)
 -- 🚩 AUTO PLAY CP
 -- ==================================================
 local function playAllCP()
-    autoPlayEnabled = true
+    status.autoPlay = true
     local folders = mainFolder:GetChildren()
     table.sort(folders, function(a,b) return a.Name < b.Name end)
 
     for _, folder in ipairs(folders) do
-        if not autoPlayEnabled then break end
+        if not status.autoPlay then break end
         local cps = folder:GetChildren()
         table.sort(cps, function(a,b) return a.Name < b.Name end)
         for _, cp in ipairs(cps) do
-            if not autoPlayEnabled then break end
+            if not status.autoPlay then break end
             root.CFrame = cp.CFrame + Vector3.new(0,5,0)
             task.wait(2)
         end
@@ -129,8 +131,8 @@ title.Font = Enum.Font.SourceSansBold
 title.TextSize = 18
 title.Parent = frame
 
--- 🔘 buat tombol toggle dengan indikator lampu
-local function makeToggle(name, yPos, stateRef)
+-- 🔘 tombol toggle dengan lampu indikator
+local function makeToggle(name, yPos, key, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 200, 0, 30)
     btn.Position = UDim2.new(0, 10, 0, yPos)
@@ -148,17 +150,13 @@ local function makeToggle(name, yPos, stateRef)
     lamp.Parent = frame
 
     btn.MouseButton1Click:Connect(function()
-        _G[stateRef] = not _G[stateRef]
-        if _G[stateRef] then
-            lamp.BackgroundColor3 = Color3.fromRGB(0,200,0) -- hijau ON
+        status[key] = not status[key]
+        if status[key] then
+            lamp.BackgroundColor3 = Color3.fromRGB(0,200,0)
+            if callback then callback(true) end
         else
-            lamp.BackgroundColor3 = Color3.fromRGB(200,0,0) -- merah OFF
-        end
-        if stateRef == "noclip" then noclipEnabled = _G[stateRef] end
-        if stateRef == "antiAfk" then antiAfkEnabled = _G[stateRef] end
-        if stateRef == "autoPlay" then 
-            autoPlayEnabled = _G[stateRef]
-            if autoPlayEnabled then playAllCP() end
+            lamp.BackgroundColor3 = Color3.fromRGB(200,0,0)
+            if callback then callback(false) end
         end
     end)
 end
@@ -166,7 +164,11 @@ end
 -- tombol toggle
 makeToggle("Noclip", 40, "noclip")
 makeToggle("Anti AFK", 80, "antiAfk")
-makeToggle("Auto Play All CP", 120, "autoPlay")
+makeToggle("Auto Play All CP", 120, "autoPlay", function(state)
+    if state then
+        playAllCP()
+    end
+end)
 
 -- 📂 List CP manual play
 local scroll = Instance.new("ScrollingFrame")
@@ -204,7 +206,7 @@ end
 
 refreshCPList()
 
--- tombol Save CP (di luar scroll)
+-- tombol Save CP
 local saveBtn = Instance.new("TextButton")
 saveBtn.Size = UDim2.new(0, 280, 0, 30)
 saveBtn.Position = UDim2.new(0, 10, 0, 310)
