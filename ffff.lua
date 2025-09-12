@@ -869,7 +869,254 @@ local function initMain()
         runVal = 16; jumpVal = 50; runLabel.Text = tostring(runVal); jumpLabel.Text = tostring(jumpVal)
         pcall(function() local hum = safeChar():FindFirstChildOfClass("Humanoid"); if hum then hum.WalkSpeed = runVal; hum.UseJumpPower = true; hum.JumpPower = jumpVal end end)
     end)
+-=========================================================
+-- 🔐 Login System
+--=========================================================
+local player = game.Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
+local VirtualUser = game:GetService("VirtualUser")
 
+local correctPass = "fattanhubGG"
+
+-- Helper Notifikasi
+local function notify(title, text)
+	game.StarterGui:SetCore("SendNotification", {
+		Title = title;
+		Text = text;
+		Duration = 3;
+	})
+end
+
+-- Login GUI
+local loginGui = Instance.new("ScreenGui", player.PlayerGui)
+local loginFrame = Instance.new("Frame", loginGui)
+loginFrame.Size = UDim2.new(0.5,0,0.3,0)
+loginFrame.Position = UDim2.new(0.25,0,0.35,0)
+loginFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+Instance.new("UICorner", loginFrame).CornerRadius = UDim.new(0,10)
+
+local passBox = Instance.new("TextBox", loginFrame)
+passBox.PlaceholderText = "Password"
+passBox.Size = UDim2.new(0.8,0,0.2,0)
+passBox.Position = UDim2.new(0.1,0,0.3,0)
+passBox.TextColor3 = Color3.new(1,1,1)
+passBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
+
+local loginBtn = Instance.new("TextButton", loginFrame)
+loginBtn.Text = "Login"
+loginBtn.Size = UDim2.new(0.5,0,0.2,0)
+loginBtn.Position = UDim2.new(0.25,0,0.65,0)
+loginBtn.BackgroundColor3 = Color3.fromRGB(0,170,255)
+loginBtn.TextColor3 = Color3.new(1,1,1)
+
+-- Loading Screen
+local loadingGui = Instance.new("ScreenGui", player.PlayerGui)
+loadingGui.Enabled = false
+local loadingFrame = Instance.new("Frame", loadingGui)
+loadingFrame.Size = UDim2.new(1,0,1,0)
+loadingFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+local loadingLabel = Instance.new("TextLabel", loadingFrame)
+loadingLabel.Text = "Loading..."
+loadingLabel.Size = UDim2.new(1,0,0.2,0)
+loadingLabel.Position = UDim2.new(0,0,0.4,0)
+loadingLabel.TextColor3 = Color3.new(1,1,1)
+loadingLabel.Font = Enum.Font.GothamBold
+loadingLabel.TextScaled = true
+
+--=========================================================
+-- 🌟 Main GUI
+--=========================================================
+local mainGui = Instance.new("ScreenGui", player.PlayerGui)
+mainGui.Enabled = false
+
+local mainFrame = Instance.new("Frame", mainGui)
+mainFrame.Size = UDim2.new(0.55,0,0.55,0)
+mainFrame.Position = UDim2.new(0.22,0,0.2,0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+
+local uiList = Instance.new("UIListLayout", mainFrame)
+uiList.SortOrder = Enum.SortOrder.LayoutOrder
+uiList.Padding = UDim.new(0,6)
+
+-- Minimize Logo
+local logoBtn = Instance.new("TextButton", mainGui)
+logoBtn.Text = "⚡"
+logoBtn.Size = UDim2.new(0.1,0,0.1,0)
+logoBtn.Position = UDim2.new(0,0,0.88,0)
+logoBtn.BackgroundColor3 = Color3.fromRGB(0,170,255)
+logoBtn.TextColor3 = Color3.new(1,1,1)
+logoBtn.Font = Enum.Font.GothamBold
+logoBtn.TextScaled = true
+logoBtn.MouseButton1Click:Connect(function()
+	mainFrame.Visible = not mainFrame.Visible
+end)
+
+-- Helpers
+local function createCategory(title)
+	local cat = Instance.new("TextLabel", mainFrame)
+	cat.Size = UDim2.new(1,0,0,30)
+	cat.Text = "🔹 "..title
+	cat.TextColor3 = Color3.new(1,1,1)
+	cat.Font = Enum.Font.GothamBold
+	cat.TextScaled = true
+	cat.BackgroundColor3 = Color3.fromRGB(45,45,45)
+	return cat
+end
+local function createBtn(text,callback)
+	local btn = Instance.new("TextButton", mainFrame)
+	btn.Size = UDim2.new(1,0,0,32)
+	btn.Text = text
+	btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextScaled = true
+	btn.MouseButton1Click:Connect(function() callback(btn) end)
+	return btn
+end
+
+--=========================================================
+-- 🏃 Movement
+--=========================================================
+createCategory("Movement")
+
+createBtn("✈ Fly",function()
+	notify("Fly", "✈ Fly Mode Aktif")
+	-- Tambahkan fungsi fly kamu
+end)
+
+local flingEnabled = false
+createBtn("💨 WalkFling: OFF",function(btn)
+	flingEnabled = not flingEnabled
+	btn.Text = flingEnabled and "💨 WalkFling: ON" or "💨 WalkFling: OFF"
+	notify("WalkFling", flingEnabled and "✅ Aktif" or "❌ Nonaktif")
+end)
+
+createBtn("⬆ Run/Jump",function()
+	notify("Run / Jump", "⚡ Panel Run & Jump Dibuka")
+end)
+
+--=========================================================
+-- 👥 Players
+--=========================================================
+createCategory("Players")
+
+createBtn("👀 ESP",function()
+	notify("ESP", "👀 ESP Player Aktif")
+end)
+
+createBtn("📜 Player List",function()
+	notify("Player List", "📜 Daftar Pemain Dibuka")
+end)
+
+--=========================================================
+-- 🛠 Utility
+--=========================================================
+createCategory("Utility")
+
+createBtn("🧱 Delete Parts",function()
+	notify("Delete Parts", "🧱 Mode Delete Parts Dibuka")
+end)
+
+createBtn("👑 Owner Crown",function()
+	notify("Owner Crown", "👑 Crown Ditambahkan")
+end)
+
+--=========================================================
+-- 🔄 Auto System
+--=========================================================
+createCategory("Auto System")
+
+-- 🚪 Noclip
+local noclipEnabled = false
+createBtn("🚪 Noclip: OFF",function(btn)
+	noclipEnabled = not noclipEnabled
+	btn.Text = noclipEnabled and "🚪 Noclip: ON" or "🚪 Noclip: OFF"
+	notify("Noclip", noclipEnabled and "✅ Aktif" or "❌ Nonaktif")
+end)
+game:GetService("RunService").Stepped:Connect(function()
+	if noclipEnabled and player.Character then
+		for _, part in ipairs(player.Character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+	end
+end)
+
+-- 👑 GodMode
+local godEnabled = false
+createBtn("👑 GodMode: OFF", function(btn)
+	godEnabled = not godEnabled
+	btn.Text = godEnabled and "👑 GodMode: ON" or "👑 GodMode: OFF"
+	notify("GodMode", godEnabled and "✅ Aktif" or "❌ Nonaktif")
+	if godEnabled then
+		task.spawn(function()
+			while godEnabled do
+				task.wait(0.5)
+				local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+				if hum then
+					hum.Health = hum.MaxHealth
+				end
+			end
+		end)
+	end
+end)
+
+-- 🔄 Auto Respawn
+local autoRespawn = false
+createBtn("🔄 Auto Respawn: OFF", function(btn)
+	autoRespawn = not autoRespawn
+	btn.Text = autoRespawn and "🔄 Auto Respawn: ON" or "🔄 Auto Respawn: OFF"
+	notify("Auto Respawn", autoRespawn and "✅ Aktif" or "❌ Nonaktif")
+end)
+player.CharacterAdded:Connect(function(char)
+	char:WaitForChild("Humanoid").Died:Connect(function()
+		if autoRespawn then
+			player:LoadCharacter()
+		end
+	end)
+end)
+
+-- ♻ Auto Rejoin
+local autoRejoin = false
+createBtn("♻ Auto Rejoin: OFF", function(btn)
+	autoRejoin = not autoRejoin
+	btn.Text = autoRejoin and "♻ Auto Rejoin: ON" or "♻ Auto Rejoin: OFF"
+	notify("Auto Rejoin", autoRejoin and "✅ Aktif" or "❌ Nonaktif")
+end)
+player.OnTeleport:Connect(function(State)
+	if autoRejoin and State == Enum.TeleportState.Failed then
+		task.wait(2)
+		TeleportService:Teleport(game.PlaceId, player)
+	end
+end)
+game.Players.PlayerRemoving:Connect(function(leaver)
+	if autoRejoin and leaver == player then
+		task.wait(2)
+		TeleportService:Teleport(game.PlaceId, player)
+	end
+end)
+
+-- 🔮 Invisible
+local invisibleEnabled = false
+createBtn("🔮 Invisible: OFF", function(btn)
+	invisibleEnabled = not invisibleEnabled
+	btn.Text = invisibleEnabled and "🔮 Invisible: ON" or "🔮 Invisible: OFF"
+	notify("Invisible", invisibleEnabled and "✅ Aktif" or "❌ Nonaktif")
+
+	local char = player.Character
+	if char then
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+				part.Transparency = invisibleEnabled and 1 or 0
+				if part:FindFirstChildOfClass("Decal") then
+					part:FindFirstChildOfClass("Decal").Transparency = invisibleEnabled and 1 or 0
+				end
+			end
+		end
+	end
+end)
     -- ============================
     -- Owner Crown small
     -- ============================
