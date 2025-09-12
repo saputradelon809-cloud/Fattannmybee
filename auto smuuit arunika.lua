@@ -1,8 +1,6 @@
--- 🏔️ AUTO SUMMIT PRO V14 - All in One
--- ✅ Noclip / Anti AFK / Auto Play / Manual CP / Saved CP
--- ✅ Checkpoint asli Arunika kedetect + bunyi + save
+-- 🏔️ AUTO SUMMIT PRO V15 - All-in-One
+-- ✅ Noclip / Anti AFK / Auto Play / Manual CP / Saved CP + Tombol Manual Save
 
--- ==================================================
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -13,7 +11,6 @@ local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local root = character:WaitForChild("HumanoidRootPart")
 
--- ==================================================
 -- Respawn handling
 local function bindCharacter(newChar)
     character = newChar
@@ -21,15 +18,9 @@ local function bindCharacter(newChar)
 end
 player.CharacterAdded:Connect(bindCharacter)
 
--- ==================================================
 -- Status
-local status = {
-    noclip = false,
-    antiAfk = false,
-    autoPlay = false
-}
+local status = {noclip=false, antiAfk=false, autoPlay=false}
 
--- ==================================================
 -- Noclip
 RunService.Stepped:Connect(function()
     if character then
@@ -56,26 +47,25 @@ player.Idled:Connect(function()
     end
 end)
 
--- ==================================================
--- Checkpoint System
+-- Checkpoints
 local function getGameCheckpoints()
     local cps = {}
     for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and string.find(obj.Name:lower(), "cp") then
-            table.insert(cps, obj)
+        if obj:IsA("BasePart") and string.find(obj.Name:lower(),"cp") then
+            table.insert(cps,obj)
         end
     end
-    table.sort(cps, function(a,b) return a.Position.Y < b.Position.Y end)
+    table.sort(cps,function(a,b) return a.Position.Y < b.Position.Y end)
     return cps
 end
 
 -- Tween teleport
-local function tweenTo(targetCFrame, duration)
+local function tweenTo(targetCFrame,duration)
     if not root or not root.Parent then
         character = player.Character or player.CharacterAdded:Wait()
         root = character:WaitForChild("HumanoidRootPart")
     end
-    local tween = TweenService:Create(root, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
+    local tween = TweenService:Create(root,TweenInfo.new(duration,Enum.EasingStyle.Linear),{CFrame=targetCFrame})
     tween:Play()
     tween.Completed:Wait()
 end
@@ -83,9 +73,17 @@ end
 -- Saved CP
 local savedCPs = {}
 
+local savedFrame = Instance.new("ScrollingFrame")
+savedFrame.Size = UDim2.new(1,-10,0,150)
+savedFrame.Position = UDim2.new(0,5,0,200)
+savedFrame.BackgroundTransparency = 0.5
+savedFrame.CanvasSize = UDim2.new(0,0,2,0)
+savedFrame.ScrollBarThickness = 6
+savedFrame.Parent = nil -- nanti parent ke frame GUI
+
 local function addSavedCPButton(cp)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 28)
+    btn.Size = UDim2.new(1,-10,0,28)
     btn.Position = UDim2.new(0,5,0,#savedCPs*32)
     btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.TextColor3 = Color3.fromRGB(255,255,255)
@@ -95,34 +93,26 @@ local function addSavedCPButton(cp)
     btn.Parent = savedFrame
 
     btn.MouseButton1Click:Connect(function()
-        tweenTo(cp.CFrame + Vector3.new(0,3,0),2)
-        firetouchinterest(root, cp, 0)
+        tweenTo(cp.CFrame+Vector3.new(0,3,0),2)
+        firetouchinterest(root,cp,0)
         task.wait(0.2)
-        firetouchinterest(root, cp, 1)
+        firetouchinterest(root,cp,1)
     end)
 end
 
-local savedFrame = Instance.new("ScrollingFrame")
-savedFrame.Size = UDim2.new(1, -10, 0, 150)
-savedFrame.Position = UDim2.new(0,5,0,200)
-savedFrame.BackgroundTransparency = 0.5
-savedFrame.CanvasSize = UDim2.new(0,0,2,0)
-savedFrame.ScrollBarThickness = 6
-savedFrame.Parent = nil -- nanti diparent ke frame GUI
-
 local function saveCP(cp)
-    if not table.find(savedCPs, cp) then
-        table.insert(savedCPs, cp)
+    if not table.find(savedCPs,cp) then
+        table.insert(savedCPs,cp)
         addSavedCPButton(cp)
     end
 end
 
--- Teleport + trigger CP asli
+-- Teleport + trigger CP
 local function touchPart(cp)
     if root and cp then
-        firetouchinterest(root, cp, 0)
+        firetouchinterest(root,cp,0)
         task.wait(0.2)
-        firetouchinterest(root, cp, 1)
+        firetouchinterest(root,cp,1)
         saveCP(cp)
     end
 end
@@ -131,9 +121,9 @@ end
 local function playAllCP()
     status.autoPlay = true
     local cps = getGameCheckpoints()
-    for _, cp in ipairs(cps) do
+    for _,cp in ipairs(cps) do
         if not status.autoPlay then break end
-        tweenTo(cp.CFrame + Vector3.new(0,3,0), 2)
+        tweenTo(cp.CFrame+Vector3.new(0,3,0),2)
         touchPart(cp)
         task.wait(4)
     end
@@ -149,7 +139,7 @@ local function playNextCP()
     local cps = getGameCheckpoints()
     local currentPos = root.Position
     local nextCP = nil
-    for _, cp in ipairs(cps) do
+    for _,cp in ipairs(cps) do
         local dist = (cp.Position - currentPos).Magnitude
         if dist > 10 then
             nextCP = cp
@@ -157,7 +147,7 @@ local function playNextCP()
         end
     end
     if nextCP then
-        tweenTo(nextCP.CFrame + Vector3.new(0,3,0), 2)
+        tweenTo(nextCP.CFrame+Vector3.new(0,3,0),2)
         touchPart(nextCP)
         task.wait(4)
     else
@@ -167,7 +157,7 @@ end
 
 -- Manual CP
 local function playOneCP(cp)
-    tweenTo(cp.CFrame + Vector3.new(0,3,0), 2)
+    tweenTo(cp.CFrame+Vector3.new(0,3,0),2)
     touchPart(cp)
     task.wait(4)
 end
@@ -179,24 +169,24 @@ screenGui.Name = "AutoSummitGui"
 screenGui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 280, 0, 380)
-frame.Position = UDim2.new(0.35, 0, 0.25, 0)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Size = UDim2.new(0,280,0,420)
+frame.Position = UDim2.new(0.35,0,0.25,0)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 frame.Active = true
 frame.Draggable = true
 frame.Parent = screenGui
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-title.Text = "🏔️ Auto Summit PRO V14"
+title.Size = UDim2.new(1,0,0,30)
+title.BackgroundColor3 = Color3.fromRGB(50,50,50)
+title.Text = "🏔️ Auto Summit PRO V15"
 title.TextColor3 = Color3.fromRGB(255,255,255)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 16
 title.Parent = frame
 
 local scrolling = Instance.new("ScrollingFrame")
-scrolling.Size = UDim2.new(1, -10, 1, -40)
+scrolling.Size = UDim2.new(1,-10,1,-40)
 scrolling.Position = UDim2.new(0,5,0,35)
 scrolling.CanvasSize = UDim2.new(0,0,6,0)
 scrolling.BackgroundTransparency = 1
@@ -205,8 +195,7 @@ scrolling.Parent = frame
 
 savedFrame.Parent = frame
 
--- Toggle + tombol
-local function makeToggle(text, order, stateTable, key)
+local function makeToggle(text,order,stateTable,key)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.8,-10,0,28)
     btn.Position = UDim2.new(0,5,0,(order-1)*32)
@@ -229,7 +218,7 @@ local function makeToggle(text, order, stateTable, key)
     end)
 end
 
-local function makeButton(text, order, callback, parent)
+local function makeButton(text,order,callback,parent)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1,-10,0,28)
     btn.Position = UDim2.new(0,5,0,(order-1)*32)
@@ -250,12 +239,30 @@ makeToggle("🕹️ Anti AFK",2,status,"antiAfk")
 makeButton("▶️ Auto Play Semua CP",3,playAllCP)
 makeButton("⏹️ Stop Auto Play",4,stopAutoPlay)
 makeButton("⏭️ Next CP (1x)",5,playNextCP)
+makeButton("💾 Save Current CP",6,function()
+    local cps = getGameCheckpoints()
+    local closest=nil
+    local minDist = math.huge
+    for _,cp in ipairs(cps) do
+        local dist = (cp.Position-root.Position).Magnitude
+        if dist<minDist then
+            minDist=dist
+            closest=cp
+        end
+    end
+    if closest then
+        saveCP(closest)
+        print("✅ CP disimpan: "..closest.Name)
+    else
+        warn("⚠️ Tidak ada CP terdekat untuk disimpan")
+    end
+end)
 
 -- Manual CP list
 local cps = getGameCheckpoints()
-local yOffset = 6
-for i, cp in ipairs(cps) do
-    makeButton("▶️ CP"..i, yOffset+i,function()
+local yOffset = 7
+for i,cp in ipairs(cps) do
+    makeButton("▶️ CP"..i,yOffset+i,function()
         playOneCP(cp)
     end)
 end
