@@ -870,6 +870,131 @@ local function initMain()
         pcall(function() local hum = safeChar():FindFirstChildOfClass("Humanoid"); if hum then hum.WalkSpeed = runVal; hum.UseJumpPower = true; hum.JumpPower = jumpVal end end)
     end)
 
+    -- ===== Delete Part Visual System (GUI + Click) =====
+    
+local scanning = false
+local originalParts = {}
+local clickDetectors = {}
+local pendingPart = nil
+
+-- GUI Konfirmasi
+local confirmGui = Instance.new("ScreenGui", CoreGui)
+confirmGui.Name = "DeleteConfirm"
+confirmGui.ResetOnSpawn = false
+confirmGui.Enabled = false
+
+local frame = Instance.new("Frame", confirmGui)
+frame.Size = UDim2.new(0, 220, 0, 110)
+frame.Position = UDim2.new(0, 10, 0.5, -55)
+frame.BackgroundColor3 = Color3.fromRGB(24,24,24)
+
+local label = Instance.new("TextLabel", frame)
+label.Size = UDim2.new(1,0,0,50)
+label.BackgroundTransparency = 1
+label.Text = "Hapus part ini?"
+label.Font = Enum.Font.GothamBold
+label.TextSize = 16
+label.TextColor3 = Color3.new(1,1,1)
+
+local yesBtn = Instance.new("TextButton", frame)
+yesBtn.Size = UDim2.new(0.5,0,0,50)
+yesBtn.Position = UDim2.new(0,0,0.45,0)
+yesBtn.Text = "Iya"
+yesBtn.BackgroundColor3 = Color3.fromRGB(0,150,0)
+
+local noBtn = Instance.new("TextButton", frame)
+noBtn.Size = UDim2.new(0.5,0,0,50)
+noBtn.Position = UDim2.new(0.5,0,0.45,0)
+noBtn.Text = "Tidak"
+noBtn.BackgroundColor3 = Color3.fromRGB(150,0,0)
+
+-- Tombol konfirmasi
+yesBtn.MouseButton1Click:Connect(function()
+    if pendingPart and pendingPart.Parent then
+        pendingPart:Destroy()
+        originalParts[pendingPart] = nil
+    end
+    pendingPart = nil
+    confirmGui.Enabled = false
+end)
+
+noBtn.MouseButton1Click:Connect(function()
+    if pendingPart and pendingPart.Parent and originalParts[pendingPart] then
+        local data = originalParts[pendingPart]
+        pendingPart.Color = data.Color
+        pendingPart.Material = data.Material
+    end
+    pendingPart = nil
+    confirmGui.Enabled = false
+end)
+
+-- Start / Stop scan parts
+local function startScan()
+    scanning = true
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            if not originalParts[part] then
+                originalParts[part] = {Color = part.Color, Material = part.Material}
+            end
+            part.Color = Color3.fromRGB(255,100,100)
+            part.Material = Enum.Material.Neon
+
+            if not part:FindFirstChildOfClass("ClickDetector") then
+                local cd = Instance.new("ClickDetector", part)
+                cd.MaxActivationDistance = 100
+                clickDetectors[part] = cd
+                cd.MouseClick:Connect(function(player)
+                    if player == LocalPlayer and scanning and not pendingPart then
+                        pendingPart = part
+                        part.Color = Color3.fromRGB(255,255,0)
+                        confirmGui.Enabled = true
+                    end
+                end)
+            else
+                clickDetectors[part] = part:FindFirstChildOfClass("ClickDetector")
+            end
+        end
+    end
+end
+
+local function stopScan()
+    scanning = false
+    for part, data in pairs(originalParts) do
+        if part and part.Parent then
+            part.Color = data.Color
+            part.Material = data.Material
+        end
+        local cd = clickDetectors[part]
+        if cd and cd.Parent then cd:Destroy() end
+        clickDetectors[part] = nil
+    end
+    originalParts = {}
+    pendingPart = nil
+    confirmGui.Enabled = false
+end
+
+-- Tombol toggle di GUI utama
+createButton("Scan Parts (Toggle)", function()
+    if not scanning then
+        startScan()
+    else
+        stopScan()
+    end
+end)
+
+createButton("Delete All Parts", function()
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part:Destroy()
+        end
+    end
+    originalParts = {}
+end)
+
+createButton("Restore Parts", function()
+    stopScan()
+end)
+
     -- ============================
     -- Owner Crown small
     -- ============================
