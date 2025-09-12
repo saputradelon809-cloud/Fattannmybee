@@ -1,11 +1,12 @@
 --[[ 
-🔥 AUTO SUMMIT GUI SYSTEM 🔥
+🔥 AUTO SUMMIT GUI SYSTEM V3 🔥
 ===========================================
 Fitur:
-✅ Auto Summit per CP
+✅ Save CP (posisi player jadi CP baru)
+✅ Auto Summit: teleport instan ke CP1 → CP2 → dst
 ✅ Noclip tanpa BodyVelocity
 ✅ Anti AFK
-✅ GUI rapi + tombol ON/OFF
+✅ GUI rapi dengan tombol ON/OFF
 --]]
 
 local Players = game:GetService("Players")
@@ -15,7 +16,7 @@ local character = player.Character or player.CharacterAdded:Wait()
 local root = character:WaitForChild("HumanoidRootPart")
 
 -- ==================================================
--- 📂 BUAT FOLDER AUTO CP
+-- 📂 FOLDER AUTO CP
 -- ==================================================
 local cpsFolder = workspace:FindFirstChild("AutoCheckpoints")
 if not cpsFolder then
@@ -25,7 +26,14 @@ if not cpsFolder then
 end
 
 -- ==================================================
--- ➕ FUNGSI TAMBAH CP
+-- 🔄 STATUS FITUR
+-- ==================================================
+local noclipEnabled = false
+local antiAfkEnabled = false
+local autoSummitEnabled = false
+
+-- ==================================================
+-- ➕ BUAT CHECKPOINT
 -- ==================================================
 local function createCheckpoint(name, position)
     if not cpsFolder:FindFirstChild(name) then
@@ -39,21 +47,9 @@ local function createCheckpoint(name, position)
         cp.TopSurface = Enum.SurfaceType.Smooth
         cp.BottomSurface = Enum.SurfaceType.Smooth
         cp.Parent = cpsFolder
+        print("✅ CP disimpan:", name, position)
     end
 end
-
--- contoh CP (edit sesuai mapmu)
-createCheckpoint("CP1", Vector3.new(0, 10, 0))
-createCheckpoint("CP2", Vector3.new(50, 50, 0))
-createCheckpoint("CP3", Vector3.new(100, 100, 0))
-createCheckpoint("Summit", Vector3.new(150, 150, 0))
-
--- ==================================================
--- 🔄 FITUR STATUS
--- ==================================================
-local noclipEnabled = false
-local antiAfkEnabled = false
-local autoSummitEnabled = false
 
 -- ==================================================
 -- 🚪 NOCLIP TANPA BODYVELOCITY
@@ -81,7 +77,7 @@ player.Idled:Connect(function()
 end)
 
 -- ==================================================
--- 🚩 AUTO SUMMIT
+-- 🚩 AUTO SUMMIT (TELEPORT INSTAN PER CP)
 -- ==================================================
 local function autoSummit()
     local cps = cpsFolder:GetChildren()
@@ -89,8 +85,9 @@ local function autoSummit()
 
     for _, cp in ipairs(cps) do
         if not autoSummitEnabled then break end
-        task.wait(2)
         root.CFrame = cp.CFrame + Vector3.new(0, 5, 0)
+        print("🚩 Teleport ke:", cp.Name)
+        task.wait(2) -- jeda antar teleport (detik)
     end
 end
 
@@ -102,7 +99,7 @@ ScreenGui.Parent = game.CoreGui
 ScreenGui.Name = "AutoSummitGui"
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 180)
+frame.Size = UDim2.new(0, 240, 0, 240)
 frame.Position = UDim2.new(0.05, 0, 0.3, 0)
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.BorderSizePixel = 0
@@ -117,7 +114,7 @@ title.Font = Enum.Font.SourceSansBold
 title.TextSize = 18
 title.Parent = frame
 
--- tombol generator
+-- fungsi buat tombol
 local function makeButton(name, yPos, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 30)
@@ -144,13 +141,19 @@ makeButton("Toggle Anti AFK", 80, function()
     print("Anti AFK:", antiAfkEnabled)
 end)
 
--- tombol auto summit
-makeButton("Start Auto Summit", 120, function()
-    if not autoSummitEnabled then
-        autoSummitEnabled = true
+-- tombol save CP
+makeButton("Save CP (posisi sekarang)", 120, function()
+    local cpName = "CP_" .. tostring(#cpsFolder:GetChildren() + 1)
+    createCheckpoint(cpName, root.Position)
+end)
+
+-- tombol start/stop auto summit
+makeButton("Toggle Auto Summit", 160, function()
+    autoSummitEnabled = not autoSummitEnabled
+    if autoSummitEnabled then
+        print("▶️ Auto Summit: ON")
         autoSummit()
     else
-        autoSummitEnabled = false
+        print("⏹️ Auto Summit: OFF")
     end
-    print("Auto Summit:", autoSummitEnabled)
 end)
