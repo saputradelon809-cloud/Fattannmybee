@@ -81,7 +81,7 @@ local function createLogin(onSuccess)
     btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.TextColor3 = Color3.new(1,1,1)
 
-    local correctPassword = "INITRIAL"
+    local correctPassword = "fattanhubGG"
 
     local function tryLogin()
         local v = tostring(box.Text or "")
@@ -137,36 +137,43 @@ local function initMain()
 
     local mainFrame = Instance.new("Frame", screenGui)
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 260, 0, 420) -- slightly bigger but still mobile-friendly
-    mainFrame.Position = UDim2.new(0.35,0,0.18,0)
+    -- compact default size (mobile-friendly) — we'll allow expand/collapse
+    mainFrame.Size = UDim2.new(0, 220, 0, 160)
+    mainFrame.Position = UDim2.new(0.02,0,0.12,0)
     mainFrame.BackgroundColor3 = Color3.fromRGB(8, 44, 110)
     mainFrame.Active = true
-    mainFrame.Draggable = true
+    mainFrame.Draggable = false -- we'll use custom draggable
 
-    local title = Instance.new("TextLabel", mainFrame)
+    local title = Instance.new("Frame", mainFrame)
+    title.Name = "TitleBar"
     title.Size = UDim2.new(1,0,0,36)
     title.Position = UDim2.new(0,0,0,0)
     title.BackgroundColor3 = Color3.fromRGB(4, 110, 200)
-    title.Text = "FATTAN HUB"
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 18
-    title.TextColor3 = Color3.new(1,1,1)
-    title.BackgroundTransparency = 0
+
+    local titleLabel = Instance.new("TextLabel", title)
+    titleLabel.Size = UDim2.new(1,-80,1,0)
+    titleLabel.Position = UDim2.new(0,8,0,0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = "FATTAN HUB"
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextSize = 16
+    titleLabel.TextColor3 = Color3.new(1,1,1)
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
     -- minimize and exit buttons (top-right)
-    local exitBtn = Instance.new("TextButton", mainFrame)
-    exitBtn.Size = UDim2.new(0,26,0,22)
-    exitBtn.Position = UDim2.new(1,-30,0,6)
+    local exitBtn = Instance.new("TextButton", title)
+    exitBtn.Size = UDim2.new(0,28,0,24)
+    exitBtn.Position = UDim2.new(1,-34,0,6)
     exitBtn.AnchorPoint = Vector2.new(0,0)
-    exitBtn.Text = "X"
+    exitBtn.Text = "✕"
     exitBtn.Font = Enum.Font.SourceSansBold
     exitBtn.TextSize = 18
     exitBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
     exitBtn.TextColor3 = Color3.new(1,1,1)
 
-    local minBtn = Instance.new("TextButton", mainFrame)
-    minBtn.Size = UDim2.new(0,26,0,22)
-    minBtn.Position = UDim2.new(1,-62,0,6)
+    local minBtn = Instance.new("TextButton", title)
+    minBtn.Size = UDim2.new(0,28,0,24)
+    minBtn.Position = UDim2.new(1,-68,0,6)
     minBtn.AnchorPoint = Vector2.new(0,0)
     minBtn.Text = "—"
     minBtn.Font = Enum.Font.SourceSansBold
@@ -174,48 +181,50 @@ local function initMain()
     minBtn.BackgroundColor3 = Color3.fromRGB(180,180,60)
     minBtn.TextColor3 = Color3.new(1,1,1)
 
+    -- Up/Down collapse toggle (shows half / full)
+    local collapseBtn = Instance.new("TextButton", title)
+    collapseBtn.Size = UDim2.new(0,36,0,24)
+    collapseBtn.Position = UDim2.new(1,-110,0,6)
+    collapseBtn.AnchorPoint = Vector2.new(0,0)
+    collapseBtn.Text = "▴"
+    collapseBtn.Font = Enum.Font.SourceSansBold
+    collapseBtn.TextSize = 18
+    collapseBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    collapseBtn.TextColor3 = Color3.new(1,1,1)
+
     -- create minimize icon (circular) hidden by default
     local miniIcon = Instance.new("ImageButton", screenGui)
     miniIcon.Name = "FattanMiniIcon"
     miniIcon.Size = UDim2.new(0,54,0,54)
     miniIcon.Position = UDim2.new(0.02,0,0.75,0)
-    miniIcon.BackgroundColor3 = Color3.fromRGB(8,44,110)
+    miniIcon.BackgroundColor3 = Color3.fromRGB(10,10,10)
     miniIcon.AutoButtonColor = true
     miniIcon.Visible = false
     miniIcon.Image = logoAsset
     miniIcon.ImageRectOffset = Vector2.new(0,0)
 
-    -- minimize behavior
-    minBtn.MouseButton1Click:Connect(function()
-        mainFrame.Visible = false
-        miniIcon.Visible = true
-    end)
-    -- restore behavior
-    miniIcon.MouseButton1Click:Connect(function()
-        mainFrame.Visible = true
-        miniIcon.Visible = false
-    end)
+    -- Content container
+    local content = Instance.new("Frame", mainFrame)
+    content.Name = "Content"
+    content.Size = UDim2.new(1, -8, 1, -44)
+    content.Position = UDim2.new(0,4,0,40)
+    content.BackgroundTransparency = 1
+    content.ClipsDescendants = true
 
-    -- exit behavior
-    exitBtn.MouseButton1Click:Connect(function()
-        pcall(function()
-            if screenGui and screenGui.Parent then screenGui:Destroy() end
-        end)
-    end)
-
-    local listLayout = Instance.new("UIListLayout", mainFrame)
+    local listLayout = Instance.new("UIListLayout", content)
     listLayout.Padding = UDim.new(0,6)
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
     local function createButton(text, callback)
-        local btn = Instance.new("TextButton", mainFrame)
-        btn.Size = UDim2.new(1,-12,0,30)
+        local btn = Instance.new("TextButton", content)
+        btn.Size = UDim2.new(1,0,0,30)
         btn.BackgroundColor3 = Color3.fromRGB(10,95,180)
         btn.Text = text
         btn.Font = Enum.Font.SourceSansSemibold
         btn.TextSize = 14
         btn.TextColor3 = Color3.new(1,1,1)
         btn.AutoButtonColor = true
+        btn.ClipsDescendants = true
         btn.MouseButton1Click:Connect(function()
             pcall(callback)
         end)
@@ -234,50 +243,21 @@ local function initMain()
     local mouse = LocalPlayer:GetMouse()
 
     -- ============================
-    -- Fly (Joystick Mode) -> ***DI-GANTI DENGAN VERSI JOYSTICK + UP/DOWN + PANEL DRAGGABLE*** 
+    -- Fly (Joystick Mode) -> ***DI-GANTI DENGAN VERSI JOYSTICK + UP/DOWN + PANEL DRAGGABLE***
+    -- (logic unchanged, UI references preserved)
     -- ============================
     local flying = false
     local flyBV, flyBG, flyConn
     local flySpeed = 80 -- default
-    -- UI controls for fly speed (kept in main frame)
-    local flyRow = Instance.new("Frame", mainFrame)
-    flyRow.Size = UDim2.new(1,-12,0,34)
-    flyRow.BackgroundTransparency = 1
-    local flyLabel = Instance.new("TextLabel", flyRow)
-    flyLabel.Size = UDim2.new(0.45,0,1,0); flyLabel.Position = UDim2.new(0,6,0,0)
-    flyLabel.BackgroundTransparency = 1; flyLabel.Text = "Fly Speed"; flyLabel.Font = Enum.Font.SourceSansBold; flyLabel.TextSize = 14; flyLabel.TextColor3 = Color3.new(1,1,1)
-    local flyMinus = Instance.new("TextButton", flyRow)
-    flyMinus.Size = UDim2.new(0,36,0,26); flyMinus.Position = UDim2.new(0.58,0,0,4); flyMinus.Text = "−"; flyMinus.Font = Enum.Font.SourceSansBold; flyMinus.TextSize = 18; flyMinus.BackgroundColor3 = Color3.fromRGB(160,40,40)
-    local flyValue = Instance.new("TextBox", flyRow)
-    flyValue.Size = UDim2.new(0,84,0,26); flyValue.Position = UDim2.new(0.72,0,0,4); flyValue.BackgroundColor3 = Color3.fromRGB(12,30,80); flyValue.TextColor3 = Color3.new(1,1,1); flyValue.Font = Enum.Font.SourceSansBold; flyValue.TextSize = 14; flyValue.Text = tostring(flySpeed)
-    local flyPlus = Instance.new("TextButton", flyRow)
-    flyPlus.Size = UDim2.new(0,36,0,26); flyPlus.Position = UDim2.new(0.92,0,0,4); flyPlus.Text = "+"; flyPlus.Font = Enum.Font.SourceSansBold; flyPlus.TextSize = 18; flyPlus.BackgroundColor3 = Color3.fromRGB(40,120,40)
 
-    local function setFlySpeed(v)
-        local num = tonumber(v) or flySpeed
-        num = math.clamp(math.floor(num), 1, 1000)
-        flySpeed = num
-        flyValue.Text = tostring(flySpeed)
-    end
-
-    flyMinus.MouseButton1Click:Connect(function()
-        setFlySpeed(flySpeed - 10)
-    end)
-    flyPlus.MouseButton1Click:Connect(function()
-        setFlySpeed(flySpeed + 10)
-    end)
-    flyValue.FocusLost:Connect(function(enter)
-        setFlySpeed(flyValue.Text)
-    end)
-
-    -- create a draggable Fly control panel (separate from main menu)
+    -- We'll keep the flyPanel as separate (small)
     local flyPanel = Instance.new("Frame")
     flyPanel.Name = "FlyPanel"
     flyPanel.Size = UDim2.new(0,180,0,140)
     flyPanel.Position = UDim2.new(0.02, 0, 0.65, 0)
     flyPanel.BackgroundColor3 = Color3.fromRGB(12, 40, 90)
     flyPanel.Active = true
-    flyPanel.Draggable = true
+    flyPanel.Draggable = false
     flyPanel.Parent = screenGui
 
     local fpTitle = Instance.new("TextLabel", flyPanel)
@@ -327,6 +307,37 @@ local function initMain()
     spLbl.Font = Enum.Font.SourceSans
     spLbl.TextSize = 14
     spLbl.TextColor3 = Color3.new(1,1,1)
+
+    -- create small controls inside main content (compact)
+    local flyRow = Instance.new("Frame", content)
+    flyRow.Size = UDim2.new(1,0,0,34)
+    flyRow.BackgroundTransparency = 1
+    local flyLabel = Instance.new("TextLabel", flyRow)
+    flyLabel.Size = UDim2.new(0.45,0,1,0); flyLabel.Position = UDim2.new(0,6,0,0)
+    flyLabel.BackgroundTransparency = 1; flyLabel.Text = "Fly Speed"; flyLabel.Font = Enum.Font.SourceSansBold; flyLabel.TextSize = 14; flyLabel.TextColor3 = Color3.new(1,1,1)
+    local flyMinus = Instance.new("TextButton", flyRow)
+    flyMinus.Size = UDim2.new(0,36,0,26); flyMinus.Position = UDim2.new(0.58,0,0,4); flyMinus.Text = "−"; flyMinus.Font = Enum.Font.SourceSansBold; flyMinus.TextSize = 18; flyMinus.BackgroundColor3 = Color3.fromRGB(160,40,40)
+    local flyValue = Instance.new("TextBox", flyRow)
+    flyValue.Size = UDim2.new(0,84,0,26); flyValue.Position = UDim2.new(0.72,0,0,4); flyValue.BackgroundColor3 = Color3.fromRGB(12,30,80); flyValue.TextColor3 = Color3.new(1,1,1); flyValue.Font = Enum.Font.SourceSansBold; flyValue.TextSize = 14; flyValue.Text = tostring(flySpeed)
+    local flyPlus = Instance.new("TextButton", flyRow)
+    flyPlus.Size = UDim2.new(0,36,0,26); flyPlus.Position = UDim2.new(0.92,0,0,4); flyPlus.Text = "+"; flyPlus.Font = Enum.Font.SourceSansBold; flyPlus.TextSize = 18; flyPlus.BackgroundColor3 = Color3.fromRGB(40,120,40)
+
+    local function setFlySpeed(v)
+        local num = tonumber(v) or flySpeed
+        num = math.clamp(math.floor(num), 1, 1000)
+        flySpeed = num
+        flyValue.Text = tostring(flySpeed)
+    end
+
+    flyMinus.MouseButton1Click:Connect(function()
+        setFlySpeed(flySpeed - 10)
+    end)
+    flyPlus.MouseButton1Click:Connect(function()
+        setFlySpeed(flySpeed + 10)
+    end)
+    flyValue.FocusLost:Connect(function(enter)
+        setFlySpeed(flyValue.Text)
+    end)
 
     -- Update spLbl when flySpeed changes from main UI
     flyValue.Changed:Connect(function()
@@ -455,8 +466,8 @@ local function initMain()
     -- ============================
     -- Player List (teleport/freeze/selected for rope)
     -- ============================
-    local playerFrame = Instance.new("Frame", mainFrame)
-    playerFrame.Size = UDim2.new(1,-12,0,120)
+    local playerFrame = Instance.new("Frame", content)
+    playerFrame.Size = UDim2.new(1,0,0,120)
     playerFrame.BackgroundColor3 = Color3.fromRGB(8,28,70)
 
     local scroll = Instance.new("ScrollingFrame", playerFrame)
@@ -815,8 +826,8 @@ local function initMain()
     local jumpVal = 50
 
     local function makeRow(labelText, initial)
-        local frame = Instance.new("Frame", mainFrame)
-        frame.Size = UDim2.new(1,-12,0,36)
+        local frame = Instance.new("Frame", content)
+        frame.Size = UDim2.new(1,0,0,36)
         frame.BackgroundTransparency = 1
         local lbl = Instance.new("TextLabel", frame)
         lbl.Size = UDim2.new(0.5,0,1,0); lbl.Position = UDim2.new(0,6,0,0)
@@ -879,12 +890,150 @@ local function initMain()
     -- ============================
     -- Contact
     -- ============================
-    local contact = Instance.new("TextLabel", mainFrame)
-    contact.Size = UDim2.new(1,-12,0,28); contact.BackgroundTransparency = 1; contact.Position = UDim2.new(0,6,1,-34)
+    local contact = Instance.new("TextLabel", content)
+    contact.Size = UDim2.new(1,0,0,24); contact.BackgroundTransparency = 1; contact.Position = UDim2.new(0,0,1,-28)
     contact.Text = "Contact: FattanHub v3.0"; contact.Font = Enum.Font.SourceSansBold; contact.TextSize = 12; contact.TextColor3 = Color3.new(0.88,0.88,0.88)
+
+    -- ============================
+    -- GUI THEME + DRAG + MINIMIZE/COLLAPSE (only UI changes here)
+    -- ============================
+    -- Colors (black + gold)
+    local THEME_BG = Color3.fromRGB(12,12,12)          -- deep black
+    local THEME_PANEL = Color3.fromRGB(18,18,18)       -- panel dark
+    local THEME_GOLD = Color3.fromRGB(212,175,55)     -- gold
+    local THEME_GOLD_DARK = Color3.fromRGB(170,140,40) -- darker gold for buttons
+    local THEME_TEXT = Color3.fromRGB(245,241,230)    -- off-white
+
+    -- Apply theme to descendants (frames/labels/buttons) — safe override: won't change behavior
+    local function applyThemeToGui(root)
+        for _, v in pairs(root:GetDescendants()) do
+            if v:IsA("Frame") and v.Name ~= "TitleBar" and v ~= mainFrame then
+                pcall(function() v.BackgroundColor3 = THEME_PANEL end)
+            elseif v:IsA("TextLabel") then
+                pcall(function() v.TextColor3 = THEME_TEXT end)
+            elseif v:IsA("TextButton") then
+                -- keep title buttons accent different
+                if v == exitBtn then
+                    pcall(function() v.BackgroundColor3 = Color3.fromRGB(160,40,40); v.TextColor3 = Color3.new(1,1,1) end)
+                elseif v == minBtn or v == collapseBtn then
+                    pcall(function() v.BackgroundColor3 = THEME_GOLD_DARK; v.TextColor3 = Color3.new(0,0,0) end)
+                else
+                    pcall(function() v.BackgroundColor3 = THEME_GOLD_DARK; v.TextColor3 = Color3.new(0,0,0) end)
+                end
+            elseif v:IsA("ImageButton") then
+                pcall(function() v.BackgroundColor3 = THEME_BG end)
+            end
+        end
+        -- Main frame colors
+        pcall(function() mainFrame.BackgroundColor3 = THEME_BG; title.BackgroundColor3 = Color3.fromRGB(10,10,10); titleLabel.TextColor3 = THEME_GOLD end)
+        pcall(function() flyPanel.BackgroundColor3 = THEME_PANEL; fpTitle.BackgroundColor3 = Color3.fromRGB(10,10,10); fpTitle.TextColor3 = THEME_GOLD end)
+    end
+
+    -- Custom draggable handler (works for mouse & touch)
+    local function makeDraggable(frame, dragHandle)
+        local dragging = false
+        local dragStart = nil
+        local startPos = nil
+
+        dragHandle.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = frame.Position
+
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end)
+
+        local conn
+        conn = UserInputService.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local delta = input.Position - dragStart
+                frame.Position = UDim2.new(
+                    math.clamp(startPos.X.Scale, 0, 1),
+                    math.clamp(startPos.X.Offset + delta.X, -9999, 9999),
+                    math.clamp(startPos.Y.Scale, 0, 1),
+                    math.clamp(startPos.Y.Offset + delta.Y, -9999, 9999)
+                )
+            end
+        end)
+
+        -- cleanup on destroy
+        frame.AncestryChanged:Connect(function()
+            if not frame:IsDescendantOf(game) then
+                if conn then conn:Disconnect() end
+            end
+        end)
+    end
+
+    -- Minimize animation
+    local isMin = false
+    local function minimizeMain()
+        if isMin then return end
+        isMin = true
+        TweenService:Create(mainFrame, TweenInfo.new(0.18), {Size = UDim2.new(0,36,0,36)}):Play()
+        task.delay(0.18, function()
+            mainFrame.Visible = false
+            miniIcon.Visible = true
+            mainFrame.Size = UDim2.new(0,220,0,160)
+        end)
+    end
+
+    local function restoreMain()
+        if not isMin then return end
+        isMin = false
+        miniIcon.Visible = false
+        mainFrame.Visible = true
+        -- small pop animation
+        mainFrame.Size = UDim2.new(0,36,0,36)
+        TweenService:Create(mainFrame, TweenInfo.new(0.18), {Size = UDim2.new(0,220,0,160)}):Play()
+    end
+
+    -- Collapse toggle (half / full)
+    local isExpanded = false
+    local compactSize = UDim2.new(0,220,0,160)
+    local fullSize = UDim2.new(0,320,0,420)
+    local function toggleExpand()
+        isExpanded = not isExpanded
+        if isExpanded then
+            collapseBtn.Text = "▾"
+            TweenService:Create(mainFrame, TweenInfo.new(0.22), {Size = fullSize}):Play()
+        else
+            collapseBtn.Text = "▴"
+            TweenService:Create(mainFrame, TweenInfo.new(0.22), {Size = compactSize}):Play()
+        end
+    end
+
+    -- Hook up buttons
+    minBtn.MouseButton1Click:Connect(minimizeMain)
+    exitBtn.MouseButton1Click:Connect(function()
+        pcall(function()
+            if screenGui and screenGui.Parent then screenGui:Destroy() end
+        end)
+    end)
+    miniIcon.MouseButton1Click:Connect(restoreMain)
+    collapseBtn.MouseButton1Click:Connect(toggleExpand)
+
+    -- Make mainFrame & flyPanel draggable by title bars
+    makeDraggable(mainFrame, title)
+    makeDraggable(flyPanel, fpTitle)
+
+    -- Apply theme (after all UI created)
+    applyThemeToGui(screenGui)
+
+    -- ensure re-enable on respawn if fling toggle was on
+    -- (original logic unaffected)
+    LocalPlayer.CharacterAdded:Connect(function()
+        if flingOn then task.wait(0.8); pcall(startFlingInvisible) end
+    end)
 
     -- Final cleanup note
     -- If you want to completely remove GUI from CoreGui: CoreGui:FindFirstChild("FattanHub"):Destroy()
 end
+
 -- Run: show login first, then init main on correct password
 createLogin(initMain)
