@@ -1,38 +1,29 @@
--- 🔥 AUTO SUMMIT PRO V12.4 🔥
--- ✅ AutoPlay + NextCP + Manual CP list
--- ✅ Noclip, Anti AFK, Save/Delete, Export/Import
--- ✅ Transparent CP helper (checkpoint asli ter-detect)
--- ✅ GUI compact draggable + lampu indikator
--- ✅ Respawn safe
+-- 🏔️ AUTO SUMMIT PRO V13 🏔️
+-- by ChatGPT
+-- 🚀 AutoPlay | NextCP | ManualCP | Noclip | AntiAFK
+-- ✅ Support Checkpoint Asli Arunika (bunyi + save)
 
 -- ==================================================
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
+local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local root = character:WaitForChild("HumanoidRootPart")
 
 -- ==================================================
--- 🔄 Update root setiap respawn
+-- Update root tiap respawn
 local function bindCharacter(newChar)
     character = newChar
     root = character:WaitForChild("HumanoidRootPart")
 end
 player.CharacterAdded:Connect(bindCharacter)
 
--- 📂 Folder CP utama
-local mainFolder = workspace:FindFirstChild("AutoCheckpoints")
-if not mainFolder then
-    mainFolder = Instance.new("Folder")
-    mainFolder.Name = "AutoCheckpoints"
-    mainFolder.Parent = workspace
-end
-
--- 🔄 Status
+-- ==================================================
+-- Status
 local status = {
     noclip = false,
     antiAfk = false,
@@ -40,7 +31,7 @@ local status = {
 }
 
 -- ==================================================
--- 🚪 NOCLIP
+-- Noclip
 RunService.Stepped:Connect(function()
     if status.noclip and character then
         for _, part in pairs(character:GetDescendants()) do
@@ -51,42 +42,29 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ==================================================
--- 🕹️ ANTI AFK
-local vu = game:GetService("VirtualUser")
+-- Anti AFK
 player.Idled:Connect(function()
     if status.antiAfk then
-        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
         task.wait(1)
-        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     end
 end)
 
 -- ==================================================
--- ➕ SIMPAN CP (helper transparan di bawah kaki)
-local function createCheckpoint(cpName, position)
-    if not mainFolder:FindFirstChild(cpName) then
-        local cp = Instance.new("Part")
-        cp.Name = cpName
-        cp.Anchored = true
-        cp.CanCollide = false
-        cp.Transparency = 1
-        cp.Size = Vector3.new(2,1,2)
-        cp.Position = position + Vector3.new(0, -3, 0)
-        cp.Parent = mainFolder
+-- Ambil semua checkpoint asli
+local function getGameCheckpoints()
+    local cps = {}
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and string.find(obj.Name:lower(), "cp") then
+            table.insert(cps, obj)
+        end
     end
+    table.sort(cps, function(a,b) return a.Position.Y < b.Position.Y end)
+    return cps
 end
 
--- ❌ DELETE CP terakhir
-local function deleteLastCheckpoint()
-    local cps = mainFolder:GetChildren()
-    if #cps > 0 then
-        cps[#cps]:Destroy()
-    end
-end
-
--- ==================================================
--- 🚩 MOVE PLAYER pakai TweenService
+-- Tween teleport
 local function tweenTo(targetCFrame, duration)
     if not root or not root.Parent then
         character = player.Character or player.CharacterAdded:Wait()
@@ -97,92 +75,57 @@ local function tweenTo(targetCFrame, duration)
     tween.Completed:Wait()
 end
 
--- 🚩 AUTO PLAY SEMUA CP
+-- ==================================================
+-- Auto Play Semua CP
 local function playAllCP()
     status.autoPlay = true
-    local cps = mainFolder:GetChildren()
-    table.sort(cps, function(a,b) return a.Name < b.Name end)
-
+    local cps = getGameCheckpoints()
     for _, cp in ipairs(cps) do
         if not status.autoPlay then break end
-        local target = cp.CFrame + Vector3.new(0, 3, 0)
-        tweenTo(target, 2)
-        for i = 1,4 do
-            if not status.autoPlay then break end
-            task.wait(1)
-        end
+        tweenTo(cp.CFrame + Vector3.new(0,3,0), 2)
+        task.wait(4) -- biar bunyi + save checkpoint
     end
 end
 
--- 🚩 NEXT CP sekali jalan
-local function playNextCP()
-    local cps = mainFolder:GetChildren()
-    table.sort(cps, function(a,b) return a.Name < b.Name end)
+-- Stop Auto Play
+local function stopAutoPlay()
+    status.autoPlay = false
+end
 
+-- Next CP sekali
+local function playNextCP()
+    local cps = getGameCheckpoints()
     local currentPos = root.Position
     local nextCP = nil
     for _, cp in ipairs(cps) do
         local dist = (cp.Position - currentPos).Magnitude
-        if dist > 5 then
+        if dist > 10 then
             nextCP = cp
             break
         end
     end
-
     if nextCP then
-        local target = nextCP.CFrame + Vector3.new(0,3,0)
-        tweenTo(target, 2)
+        tweenTo(nextCP.CFrame + Vector3.new(0,3,0), 2)
         task.wait(4)
     else
-        warn("⚠️ Tidak ada CP berikutnya!")
+        warn("⚠️ Tidak ada CP berikutnya")
     end
 end
 
--- 🚩 PLAY MANUAL CP
+-- Manual CP
 local function playOneCP(cp)
-    local target = cp.CFrame + Vector3.new(0, 3, 0)
-    tweenTo(target, 2)
+    tweenTo(cp.CFrame + Vector3.new(0,3,0), 2)
+    task.wait(4)
 end
 
 -- ==================================================
--- 📤 EXPORT CP
-local function exportCheckpoints()
-    local data = {}
-    for _, cp in ipairs(mainFolder:GetChildren()) do
-        table.insert(data, {name = cp.Name, pos = {cp.Position.X, cp.Position.Y, cp.Position.Z}})
-    end
-    local str = "return "..HttpService:JSONEncode(data)
-    if setclipboard then
-        setclipboard(str)
-        print("✅ Data CP disalin ke clipboard!")
-    else
-        print("⚠️ Executor kamu tidak support setclipboard")
-    end
-end
-
--- 📥 IMPORT CP
-local function importCheckpoints(url)
-    local success, data = pcall(function()
-        return loadstring(game:HttpGet(url))()
-    end)
-    if success and type(data) == "table" then
-        for _, cpData in ipairs(data) do
-            createCheckpoint(cpData.name, Vector3.new(cpData.pos[1], cpData.pos[2], cpData.pos[3]))
-        end
-        print("✅ CP diimport dari link!")
-    else
-        warn("⚠️ Gagal import CP")
-    end
-end
-
--- ==================================================
--- GUI COMPACT
+-- GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoSummitGui"
 screenGui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 320)
+frame.Size = UDim2.new(0, 300, 0, 380)
 frame.Position = UDim2.new(0.35, 0, 0.25, 0)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Active = true
@@ -192,7 +135,7 @@ frame.Parent = screenGui
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-title.Text = "🏔️ Auto Summit PRO V12.4"
+title.Text = "🏔️ Auto Summit PRO V13"
 title.TextColor3 = Color3.fromRGB(255,255,255)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 16
@@ -201,19 +144,12 @@ title.Parent = frame
 local scrolling = Instance.new("ScrollingFrame")
 scrolling.Size = UDim2.new(1, -10, 1, -40)
 scrolling.Position = UDim2.new(0, 5, 0, 35)
-scrolling.CanvasSize = UDim2.new(0, 0, 5, 0)
+scrolling.CanvasSize = UDim2.new(0, 0, 6, 0)
 scrolling.BackgroundTransparency = 1
 scrolling.ScrollBarThickness = 6
 scrolling.Parent = frame
 
-local cpButtonsFolder = Instance.new("Frame")
-cpButtonsFolder.Size = UDim2.new(1, -10, 0, 200)
-cpButtonsFolder.Position = UDim2.new(0, 0, 0, 220)
-cpButtonsFolder.BackgroundTransparency = 1
-cpButtonsFolder.Parent = scrolling
-
--- ==================================================
--- Fungsi buat toggle + lampu
+-- Toggle dengan lampu
 local function makeToggle(text, order, stateTable, key)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.8, -10, 0, 28)
@@ -237,7 +173,7 @@ local function makeToggle(text, order, stateTable, key)
     end)
 end
 
--- Fungsi buat tombol biasa
+-- Tombol biasa
 local function makeButton(text, order, callback, parent)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -10, 0, 28)
@@ -256,21 +192,15 @@ end
 -- Tambah tombol utama
 makeToggle("🚪 Noclip", 1, status, "noclip")
 makeToggle("🕹️ Anti AFK", 2, status, "antiAfk")
-makeButton("➕ Save CP", 3, function()
-    local cpName = "CP"..tostring(#mainFolder:GetChildren()+1)
-    createCheckpoint(cpName, root.Position)
+makeButton("▶️ Auto Play Semua CP", 3, playAllCP)
+makeButton("⏹️ Stop Auto Play", 4, stopAutoPlay)
+makeButton("⏭️ Next CP (1x)", 5, playNextCP)
 
-    makeButton("▶️ "..cpName, #mainFolder:GetChildren(), function()
-        local cp = mainFolder:FindFirstChild(cpName)
-        if cp then playOneCP(cp) end
-    end, cpButtonsFolder)
-end)
-makeButton("🗑️ Delete CP terakhir", 4, deleteLastCheckpoint)
-makeButton("▶️ Auto Play Semua CP", 5, playAllCP)
-makeButton("⏹️ Stop Auto Play", 6, function() status.autoPlay = false end)
-makeButton("⏭️ Next CP (1x)", 7, playNextCP)
-makeButton("📤 Export CP", 8, exportCheckpoints)
-makeButton("📥 Import CP (isi link di script)", 9, function()
-    local url = "PASTE_LINK_GITHUB_DISINI"
-    importCheckpoints(url)
-end)
+-- Manual CP list
+local cps = getGameCheckpoints()
+local yOffset = 6
+for i, cp in ipairs(cps) do
+    makeButton("▶️ CP"..i, yOffset+i, function()
+        playOneCP(cp)
+    end)
+end
