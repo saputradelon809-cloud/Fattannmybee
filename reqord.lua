@@ -5,54 +5,7 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- ====== Loading Screen ======
-local loadingScreen = Instance.new("ScreenGui")
-loadingScreen.Name = "FATTANHUB_Loading"
-loadingScreen.ResetOnSpawn = false
-loadingScreen.Parent = playerGui
-
-local loadingFrame = Instance.new("Frame")
-loadingFrame.Size = UDim2.new(1,0,1,0)
-loadingFrame.Position = UDim2.new(0,0,0,0)
-loadingFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-loadingFrame.Parent = loadingScreen
-
-local loadingLabel = Instance.new("TextLabel")
-loadingLabel.Size = UDim2.new(1,0,0,100)
-loadingLabel.Position = UDim2.new(0,0,0.4,0)
-loadingLabel.BackgroundTransparency = 1
-loadingLabel.Text = "FATTANHUB👑"
-loadingLabel.TextColor3 = Color3.fromRGB(255,215,0)
-loadingLabel.Font = Enum.Font.GothamBlack
-loadingLabel.TextScaled = true
-loadingLabel.TextStrokeTransparency = 0
-loadingLabel.Parent = loadingFrame
-
-local barBack = Instance.new("Frame", loadingFrame)
-barBack.Size = UDim2.new(0.6,0,0,20)
-barBack.Position = UDim2.new(0.2,0,0.6,0)
-barBack.BackgroundColor3 = Color3.fromRGB(50,50,50)
-barBack.BorderSizePixel = 0
-
-local barFront = Instance.new("Frame", barBack)
-barFront.Size = UDim2.new(0,0,1,0)
-barFront.BackgroundColor3 = Color3.fromRGB(255,215,0)
-barFront.BorderSizePixel = 0
-
--- Loading animation 5 detik
-task.spawn(function()
-    local duration = 5
-    local startTime = tick()
-    while tick() - startTime < duration do
-        local progress = (tick() - startTime)/duration
-        barFront.Size = UDim2.new(progress,0,1,0)
-        loadingLabel.TextTransparency = math.abs(math.sin(tick()*3))
-        RunService.RenderStepped:Wait()
-    end
-    loadingScreen:Destroy()
-end)
-
--- ====== GUI Setup ======
+-- ====== GUI Setup (disembunyikan dulu) ======
 local guiName = "FATTANHUB_Recorder"
 local oldGui = playerGui:FindFirstChild(guiName)
 if oldGui then oldGui:Destroy() end
@@ -61,6 +14,7 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = guiName
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
+screenGui.Enabled = false -- GUI disembunyikan sampai loading selesai
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0,350,0,400)
@@ -268,4 +222,52 @@ minimizeBtn.MouseButton1Click:Connect(function()
         contentFrame.Visible = true
         mainFrame.Size = UDim2.new(0,350,0,400)
     end
+end)
+
+-- ====== Loading Screen ======
+local loadingScreen = Instance.new("ScreenGui")
+loadingScreen.Name = "FATTANHUB_Loading"
+loadingScreen.ResetOnSpawn = false
+loadingScreen.Parent = playerGui
+
+local loadingFrame = Instance.new("Frame")
+loadingFrame.Size = UDim2.new(1,0,1,0)
+loadingFrame.Position = UDim2.new(0,0,0,0)
+loadingFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+loadingFrame.Parent = loadingScreen
+
+local loadingLabel = Instance.new("TextLabel")
+loadingLabel.Size = UDim2.new(1,0,0,100)
+loadingLabel.Position = UDim2.new(0,0,0.4,0)
+loadingLabel.BackgroundTransparency = 1
+loadingLabel.Text = "FATTANHUB👑"
+loadingLabel.TextColor3 = Color3.fromRGB(255,215,0)
+loadingLabel.Font = Enum.Font.GothamBlack
+loadingLabel.TextScaled = true
+loadingLabel.TextStrokeTransparency = 0
+loadingLabel.Parent = loadingFrame
+
+local barBack = Instance.new("Frame", loadingFrame)
+barBack.Size = UDim2.new(0.6,0,0,20)
+barBack.Position = UDim2.new(0.2,0,0.6,0)
+barBack.BackgroundColor3 = Color3.fromRGB(50,50,50)
+barBack.BorderSizePixel = 0
+
+local barFront = Instance.new("Frame", barBack)
+barFront.Size = UDim2.new(0,0,1,0)
+barFront.BackgroundColor3 = Color3.fromRGB(255,215,0)
+barFront.BorderSizePixel = 0
+
+-- Animasi loading 5 detik
+task.spawn(function()
+    local duration = 5
+    local startTime = tick()
+    while tick() - startTime < duration do
+        local progress = (tick() - startTime)/duration
+        barFront.Size = UDim2.new(progress,0,1,0)
+        loadingLabel.TextTransparency = math.abs(math.sin(tick()*3))
+        RunService.RenderStepped:Wait()
+    end
+    loadingScreen:Destroy()
+    screenGui.Enabled = true -- GUI utama muncul setelah loading selesai
 end)
