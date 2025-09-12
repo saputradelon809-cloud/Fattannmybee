@@ -1,59 +1,10 @@
--- FATTANHUB Recorder Script (Mobile-Friendly & Full Functional)
+-- ===== FATTANHUB Recorder Script Full =====
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
-
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- ====== Loading Screen ======
-local loadingGui = Instance.new("ScreenGui")
-loadingGui.Name = "FATTANHUB_Loading"
-loadingGui.ResetOnSpawn = false
-loadingGui.Parent = playerGui
-
-local loadingFrame = Instance.new("Frame")
-loadingFrame.Size = UDim2.new(1,0,1,0)
-loadingFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-loadingFrame.Parent = loadingGui
-
-local loadingLabel = Instance.new("TextLabel")
-loadingLabel.Size = UDim2.new(1,0,0,100)
-loadingLabel.Position = UDim2.new(0,0,0.4,0)
-loadingLabel.BackgroundTransparency = 1
-loadingLabel.Text = "FATTANHUB👑"
-loadingLabel.TextColor3 = Color3.fromRGB(255,215,0)
-loadingLabel.Font = Enum.Font.GothamBlack
-loadingLabel.TextScaled = true
-loadingLabel.TextStrokeTransparency = 0
-loadingLabel.Parent = loadingFrame
-
-local barBack = Instance.new("Frame", loadingFrame)
-barBack.Size = UDim2.new(0.6,0,0,20)
-barBack.Position = UDim2.new(0.2,0,0.6,0)
-barBack.BackgroundColor3 = Color3.fromRGB(50,50,50)
-barBack.BorderSizePixel = 0
-
-local barFront = Instance.new("Frame", barBack)
-barFront.Size = UDim2.new(0,0,1,0)
-barFront.BackgroundColor3 = Color3.fromRGB(255,215,0)
-barFront.BorderSizePixel = 0
-
--- Animasi loading 5 detik
-task.spawn(function()
-    local duration = 5
-    local startTime = tick()
-    while tick() - startTime < duration do
-        local progress = (tick() - startTime)/duration
-        barFront.Size = UDim2.new(progress,0,1,0)
-        loadingLabel.TextTransparency = math.abs(math.sin(tick()*3))
-        RunService.RenderStepped:Wait()
-    end
-    loadingGui:Destroy()
-    screenGui.Enabled = true
-end)
-
--- ====== Main GUI ======
+-- ===== Main GUI =====
 local guiName = "FATTANHUB_Recorder"
 local oldGui = playerGui:FindFirstChild(guiName)
 if oldGui then oldGui:Destroy() end
@@ -62,15 +13,16 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = guiName
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
-screenGui.Enabled = false -- hanya muncul setelah loading
+screenGui.Enabled = true
 
--- Main Frame
+-- Main Frame (sembunyi dulu)
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0,360,0,500)
 mainFrame.Position = UDim2.new(0.5,-180,0.1,0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(35,35,40)
 mainFrame.Active = true
 mainFrame.Draggable = true
+mainFrame.Visible = false
 mainFrame.Parent = screenGui
 
 -- Header
@@ -96,9 +48,7 @@ closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.BackgroundColor3 = Color3.fromRGB(200,70,70)
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 14
-closeBtn.MouseButton1Click:Connect(function()
-    screenGui:Destroy()
-end)
+closeBtn.MouseButton1Click:Connect(function() screenGui:Destroy() end)
 
 local minimizeBtn = Instance.new("TextButton", header)
 minimizeBtn.Size = UDim2.new(0,35,0,35)
@@ -115,7 +65,7 @@ contentFrame.Size = UDim2.new(1,-20,1,-60)
 contentFrame.Position = UDim2.new(0,10,0,50)
 contentFrame.BackgroundColor3 = Color3.fromRGB(45,45,55)
 
--- Helper function untuk tombol
+-- Helper: tombol
 local function createButton(parent,text,pos,color)
     local btn = Instance.new("TextButton",parent)
     btn.Size = UDim2.new(0,150,0,35)
@@ -129,7 +79,7 @@ local function createButton(parent,text,pos,color)
     return btn
 end
 
--- Tombol utama
+-- Tombol
 local recordBtn = createButton(contentFrame,"⏺ Record",UDim2.new(0,10,0,10),Color3.fromRGB(70,130,180))
 local pauseBtn = createButton(contentFrame,"⏸ Pause",UDim2.new(0,200,0,10),Color3.fromRGB(255,215,0))
 local saveBtn = createButton(contentFrame,"💾 Save",UDim2.new(0,10,0,55),Color3.fromRGB(34,139,34))
@@ -169,7 +119,7 @@ local listLayout = Instance.new("UIListLayout", replayList)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Padding = UDim.new(0,5)
 
--- Replay data
+-- ===== Replay Logic =====
 local character, hrp
 local isRecording, isPausedRecord, isPaused = false,false,false
 local recordData = {}
@@ -183,8 +133,7 @@ end
 player.CharacterAdded:Connect(onCharacterAdded)
 if player.Character then onCharacterAdded(player.Character) end
 
--- Fungsi Record / Stop
-local function startRecording() recordData = {} isRecording=true end
+local function startRecording() recordData={} isRecording=true end
 local function stopRecording() isRecording=false end
 
 RunService.Heartbeat:Connect(function()
@@ -198,7 +147,6 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Fungsi Play Replay
 local function playReplay(data)
     local token = {}
     currentReplayToken = token
@@ -222,13 +170,13 @@ local function playReplay(data)
     if currentReplayToken==token then currentReplayToken=nil end
 end
 
--- Fungsi tambah item replay ke list
 local function refreshReplayList()
     for _,c in ipairs(replayList:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
     for i,r in ipairs(savedReplays) do
         local item = Instance.new("Frame", replayList)
         item.Size = UDim2.new(1,0,0,40)
         item.BackgroundColor3 = Color3.fromRGB(65,65,75)
+
         local nameBox = Instance.new("TextBox", item)
         nameBox.Size = UDim2.new(0.5,-10,1,0)
         nameBox.Position = UDim2.new(0,5,0,0)
@@ -265,10 +213,7 @@ saveBtn.MouseButton1Click:Connect(function()
         refreshReplayList()
     end
 end)
-loadBtn.MouseButton1Click:Connect(function()
-    -- bisa ditambah load JSON disini
-    refreshReplayList()
-end)
+loadBtn.MouseButton1Click:Connect(function() refreshReplayList() end)
 mergeBtn.MouseButton1Click:Connect(function()
     local merged = {}
     for _,r in ipairs(savedReplays) do
@@ -280,8 +225,52 @@ end)
 -- Minimize toggle
 local minimized=false
 minimizeBtn.MouseButton1Click:Connect(function()
-    minimized=not minimized
-    contentFrame.Visible=not minimized
-    if minimized then mainFrame.Size=UDim2.new(0,360,0,50)
-    else mainFrame.Size=UDim2.new(0,360,0,500) end
+    minimized = not minimized
+    contentFrame.Visible = not minimized
+    mainFrame.Size = minimized and UDim2.new(0,200,0,50) or UDim2.new(0,360,0,500)
+end)
+
+-- ===== Loading Screen =====
+local loadingGui = Instance.new("ScreenGui",playerGui)
+loadingGui.Name = "FATTANHUB_Loading"
+
+local loadingFrame = Instance.new("Frame",loadingGui)
+loadingFrame.Size=UDim2.new(1,0,1,0)
+loadingFrame.BackgroundColor3=Color3.fromRGB(15,15,15)
+
+local loadingLabel = Instance.new("TextLabel",loadingFrame)
+loadingLabel.Size=UDim2.new(0.8,0,0,80)
+loadingLabel.Position=UDim2.new(0.1,0,0.4,0)
+loadingLabel.BackgroundTransparency=1
+loadingLabel.Text="FATTANHUB👑"
+loadingLabel.TextColor3=Color3.fromRGB(255,215,0)
+loadingLabel.Font=Enum.Font.GothamBlack
+loadingLabel.TextScaled=true
+loadingLabel.TextStrokeTransparency=0
+loadingLabel.TextXAlignment=Enum.TextXAlignment.Center
+loadingLabel.TextYAlignment=Enum.TextYAlignment.Center
+
+local barBack=Instance.new("Frame",loadingFrame)
+barBack.Size=UDim2.new(0.6,0,0,20)
+barBack.Position=UDim2.new(0.2,0,0.6,0)
+barBack.BackgroundColor3=Color3.fromRGB(50,50,50)
+Instance.new("UICorner",barBack).CornerRadius=UDim.new(0,10)
+
+local barFront=Instance.new("Frame",barBack)
+barFront.Size=UDim2.new(0,0,1,0)
+barFront.BackgroundColor3=Color3.fromRGB(255,215,0)
+Instance.new("UICorner",barFront).CornerRadius=UDim.new(0,10)
+
+-- Animasi 5 detik
+mainFrame.Visible=false
+task.spawn(function()
+    local startTime=tick()
+    while tick()-startTime<5 do
+        local progress=(tick()-startTime)/5
+        barFront.Size=UDim2.new(progress,0,1,0)
+        loadingLabel.TextTransparency=math.abs(math.sin(tick()*2))*0.2
+        RunService.RenderStepped:Wait()
+    end
+    loadingGui:Destroy()
+    mainFrame.Visible=true
 end)
