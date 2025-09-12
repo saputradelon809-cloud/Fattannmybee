@@ -1,4 +1,4 @@
--- ===== FATTANHUB Recorder Script Full =====
+-- ===== FATTANHUB Recorder Final =====
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
@@ -15,14 +15,14 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 screenGui.Enabled = true
 
--- Main Frame (sembunyi dulu)
+-- Main Frame
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0,360,0,500)
 mainFrame.Position = UDim2.new(0.5,-180,0.1,0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(35,35,40)
 mainFrame.Active = true
 mainFrame.Draggable = true
-mainFrame.Visible = false
+mainFrame.Visible = false -- sembunyi sampai loading selesai
 mainFrame.Parent = screenGui
 
 -- Header
@@ -79,14 +79,14 @@ local function createButton(parent,text,pos,color)
     return btn
 end
 
--- Tombol
+-- Tombol utama
 local recordBtn = createButton(contentFrame,"⏺ Record",UDim2.new(0,10,0,10),Color3.fromRGB(70,130,180))
 local pauseBtn = createButton(contentFrame,"⏸ Pause",UDim2.new(0,200,0,10),Color3.fromRGB(255,215,0))
 local saveBtn = createButton(contentFrame,"💾 Save",UDim2.new(0,10,0,55),Color3.fromRGB(34,139,34))
 local loadBtn = createButton(contentFrame,"📂 Load",UDim2.new(0,200,0,55),Color3.fromRGB(100,149,237))
 local mergeBtn = createButton(contentFrame,"🔗 Merge & Play",UDim2.new(0,10,0,100),Color3.fromRGB(255,140,0))
 
--- Speed control
+-- Speed
 local speedLabel = Instance.new("TextLabel", contentFrame)
 speedLabel.Size = UDim2.new(0,60,0,30)
 speedLabel.Position = UDim2.new(0,10,0,145)
@@ -185,12 +185,23 @@ local function refreshReplayList()
         nameBox.ClearTextOnFocus=false
         Instance.new("UICorner",nameBox).CornerRadius=UDim.new(0,4)
 
-        local playBtn = createButton(item,"▶",UDim2.new(0.55,0,0.15,0),Color3.fromRGB(70,130,180))
-        playBtn.Size=UDim2.new(0,40,0,25)
+        -- Pilih replay
+        r.Selected = r.Selected or false
+        local selectBtn = createButton(item,"☐",UDim2.new(0.55,0,0.15,0),Color3.fromRGB(100,100,100))
+        selectBtn.Size=UDim2.new(0,30,0,25)
+        selectBtn.MouseButton1Click:Connect(function()
+            r.Selected = not r.Selected
+            selectBtn.Text = r.Selected and "☑" or "☐"
+        end)
+
+        -- Play button
+        local playBtn = createButton(item,"▶",UDim2.new(0.65,0,0.15,0),Color3.fromRGB(70,130,180))
+        playBtn.Size=UDim2.new(0,30,0,25)
         playBtn.MouseButton1Click:Connect(function() task.spawn(function() playReplay(r.Frames) end) end)
 
+        -- Delete button
         local delBtn = createButton(item,"🗑",UDim2.new(0.75,0,0.15,0),Color3.fromRGB(220,20,60))
-        delBtn.Size=UDim2.new(0,40,0,25)
+        delBtn.Size=UDim2.new(0,30,0,25)
         delBtn.MouseButton1Click:Connect(function() table.remove(savedReplays,i) refreshReplayList() end)
     end
     replayList.CanvasSize = UDim2.new(0,0,0,listLayout.AbsoluteContentSize.Y+10)
@@ -217,12 +228,14 @@ loadBtn.MouseButton1Click:Connect(function() refreshReplayList() end)
 mergeBtn.MouseButton1Click:Connect(function()
     local merged = {}
     for _,r in ipairs(savedReplays) do
-        for _,f in ipairs(r.Frames) do table.insert(merged,f) end
+        if r.Selected then
+            for _,f in ipairs(r.Frames) do table.insert(merged,f) end
+        end
     end
     if #merged>0 then task.spawn(function() playReplay(merged) end) end
 end)
 
--- Minimize toggle
+-- Minimize
 local minimized=false
 minimizeBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
