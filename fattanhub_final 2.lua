@@ -1,4 +1,3 @@
-
 -- FATTAN HUB - FINAL ALL IN ONE (password + tap-fly + rope3D + invisible-fling + mobile tweaks)
 -- Password: fattanhubGG
 -- Paste to executor / LocalScript (must be allowed to create CoreGui elements)
@@ -138,7 +137,9 @@ local function initMain()
 
     local mainFrame = Instance.new("Frame", screenGui)
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 260, 0, 520) -- made taller to fit extra features
+    local FULL_W, FULL_H = 260, 520 -- default full size
+    local HALF_H = 260 -- half height for "Up" state
+    mainFrame.Size = UDim2.new(0, FULL_W, 0, FULL_H)
     mainFrame.Position = UDim2.new(0.35,0,0.12,0)
     mainFrame.BackgroundColor3 = Color3.fromRGB(8, 44, 110)
     mainFrame.Active = true
@@ -154,9 +155,11 @@ local function initMain()
     title.TextColor3 = Color3.new(1,1,1)
     title.BackgroundTransparency = 0
 
-    -- minimize and exit buttons (top-right)
+    -- Top-right controls: Up / Down + Minimize + Exit
+    local btnSize = UDim2.new(0,26,0,22)
+    local spacing = 4
     local exitBtn = Instance.new("TextButton", mainFrame)
-    exitBtn.Size = UDim2.new(0,26,0,22)
+    exitBtn.Size = btnSize
     exitBtn.Position = UDim2.new(1,-30,0,6)
     exitBtn.AnchorPoint = Vector2.new(0,0)
     exitBtn.Text = "X"
@@ -166,7 +169,7 @@ local function initMain()
     exitBtn.TextColor3 = Color3.new(1,1,1)
 
     local minBtn = Instance.new("TextButton", mainFrame)
-    minBtn.Size = UDim2.new(0,26,0,22)
+    minBtn.Size = btnSize
     minBtn.Position = UDim2.new(1,-62,0,6)
     minBtn.AnchorPoint = Vector2.new(0,0)
     minBtn.Text = "—"
@@ -174,6 +177,26 @@ local function initMain()
     minBtn.TextSize = 18
     minBtn.BackgroundColor3 = Color3.fromRGB(180,180,60)
     minBtn.TextColor3 = Color3.new(1,1,1)
+
+    -- Up button (collapse to half)
+    local upBtn = Instance.new("TextButton", mainFrame)
+    upBtn.Size = btnSize
+    upBtn.Position = UDim2.new(1,-94,0,6)
+    upBtn.Text = "▲"
+    upBtn.Font = Enum.Font.SourceSansBold
+    upBtn.TextSize = 16
+    upBtn.BackgroundColor3 = Color3.fromRGB(100,140,220)
+    upBtn.TextColor3 = Color3.new(1,1,1)
+
+    -- Down button (expand to full)
+    local downBtn = Instance.new("TextButton", mainFrame)
+    downBtn.Size = btnSize
+    downBtn.Position = UDim2.new(1,-126,0,6)
+    downBtn.Text = "▼"
+    downBtn.Font = Enum.Font.SourceSansBold
+    downBtn.TextSize = 16
+    downBtn.BackgroundColor3 = Color3.fromRGB(100,140,220)
+    downBtn.TextColor3 = Color3.new(1,1,1)
 
     -- create minimize icon (circular) hidden by default
     local miniIcon = Instance.new("ImageButton", screenGui)
@@ -202,6 +225,41 @@ local function initMain()
         pcall(function()
             if screenGui and screenGui.Parent then screenGui:Destroy() end
         end)
+    end)
+
+    -- Tween helpers for resizing
+    local tweenTime = 0.28
+    local isExpanded = true -- full view
+    local function setToFull()
+        if isExpanded then return end
+        isExpanded = true
+        TweenService:Create(mainFrame, TweenInfo.new(tweenTime), {Size = UDim2.new(0, FULL_W, 0, FULL_H)}):Play()
+    end
+    local function setToHalf()
+        if not isExpanded then return end
+        isExpanded = false
+        TweenService:Create(mainFrame, TweenInfo.new(tweenTime), {Size = UDim2.new(0, FULL_W, 0, HALF_H)}):Play()
+    end
+
+    upBtn.MouseButton1Click:Connect(function()
+        setToHalf()
+    end)
+    downBtn.MouseButton1Click:Connect(function()
+        setToFull()
+    end)
+
+    -- Also allow toggle by double-click on title (handy)
+    local lastClick = 0
+    title.MouseButton1Click = title.MouseButton1Click or Instance.new("BindableEvent")
+    title.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local now = tick()
+            if (now - lastClick) < 0.35 then
+                -- double click -> toggle
+                if isExpanded then setToHalf() else setToFull() end
+            end
+            lastClick = now
+        end
     end)
 
     local listLayout = Instance.new("UIListLayout", mainFrame)
@@ -235,7 +293,7 @@ local function initMain()
     local mouse = LocalPlayer:GetMouse()
 
     -- ============================
-    -- Fly (Joystick Mode) -> ***DI-GANTI DENGAN VERSI JOYSTICK + UP/DOWN + PANEL DRAGGABLE*** 
+    -- Fly (Joystick Mode) -> kept same
     -- ============================
     local flying = false
     local flyBV, flyBG, flyConn
@@ -300,24 +358,24 @@ local function initMain()
     fpToggle.BackgroundColor3 = Color3.fromRGB(40,100,180)
     fpToggle.TextColor3 = Color3.new(1,1,1)
 
-    -- Up / Down buttons
-    local upBtn = Instance.new("TextButton", flyPanel)
-    upBtn.Size = UDim2.new(0.4,0,0,28)
-    upBtn.Position = UDim2.new(0.05,0,0,70)
-    upBtn.Text = "Up"
-    upBtn.Font = Enum.Font.SourceSansBold
-    upBtn.TextSize = 14
-    upBtn.BackgroundColor3 = Color3.fromRGB(40,180,100)
-    upBtn.TextColor3 = Color3.new(1,1,1)
+    -- Up / Down buttons in fly panel
+    local upBtn_fly = Instance.new("TextButton", flyPanel)
+    upBtn_fly.Size = UDim2.new(0.4,0,0,28)
+    upBtn_fly.Position = UDim2.new(0.05,0,0,70)
+    upBtn_fly.Text = "Up"
+    upBtn_fly.Font = Enum.Font.SourceSansBold
+    upBtn_fly.TextSize = 14
+    upBtn_fly.BackgroundColor3 = Color3.fromRGB(40,180,100)
+    upBtn_fly.TextColor3 = Color3.new(1,1,1)
 
-    local downBtn = Instance.new("TextButton", flyPanel)
-    downBtn.Size = UDim2.new(0.4,0,0,28)
-    downBtn.Position = UDim2.new(0.55,0,0,70)
-    downBtn.Text = "Down"
-    downBtn.Font = Enum.Font.SourceSansBold
-    downBtn.TextSize = 14
-    downBtn.BackgroundColor3 = Color3.fromRGB(180,40,40)
-    downBtn.TextColor3 = Color3.new(1,1,1)
+    local downBtn_fly = Instance.new("TextButton", flyPanel)
+    downBtn_fly.Size = UDim2.new(0.4,0,0,28)
+    downBtn_fly.Position = UDim2.new(0.55,0,0,70)
+    downBtn_fly.Text = "Down"
+    downBtn_fly.Font = Enum.Font.SourceSansBold
+    downBtn_fly.TextSize = 14
+    downBtn_fly.BackgroundColor3 = Color3.fromRGB(180,40,40)
+    downBtn_fly.TextColor3 = Color3.new(1,1,1)
 
     -- Speed label inside panel (mirror)
     local spLbl = Instance.new("TextLabel", flyPanel)
@@ -339,10 +397,10 @@ local function initMain()
     local downHold = false
     local verticalSpeed = 60 -- up/down speed when hold
 
-    upBtn.MouseButton1Down:Connect(function() upHold = true end)
-    upBtn.MouseButton1Up:Connect(function() upHold = false end)
-    downBtn.MouseButton1Down:Connect(function() downHold = true end)
-    downBtn.MouseButton1Up:Connect(function() downHold = false end)
+    upBtn_fly.MouseButton1Down:Connect(function() upHold = true end)
+    upBtn_fly.MouseButton1Up:Connect(function() upHold = false end)
+    downBtn_fly.MouseButton1Down:Connect(function() downHold = true end)
+    downBtn_fly.MouseButton1Up:Connect(function() downHold = false end)
 
     -- Toggle button uses same flying logic as main toggle (keep both synced)
     local function startFly()
@@ -883,7 +941,7 @@ local function initMain()
     local extraFrame = Instance.new("Frame", mainFrame)
     extraFrame.Size = UDim2.new(1,-12,0,140)
     extraFrame.BackgroundColor3 = Color3.fromRGB(24,24,24)
-    extraFrame.Position = UDim2.new(0,6,0,420) -- place near bottom
+    extraFrame.Position = UDim2.new(0,6,0, (FULL_H - 140) ) -- anchored near bottom (will move with tween)
     local extraCorner = Instance.new("UICorner", extraFrame)
     extraCorner.CornerRadius = UDim.new(0,6)
 
@@ -954,7 +1012,7 @@ local function initMain()
             -- small delay to allow character to fully load
             task.delay(0.6, function()
                 if LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-                    -- nothing to do: character already spawned
+                    -- no-op
                 end
             end)
         end
@@ -1021,7 +1079,7 @@ local function initMain()
     local antiAFK = true
     local antiBtn = Instance.new("TextButton", extraFrame)
     antiBtn.Size = UDim2.new(0.4,0,0,26)
-    antiBtn.Position = UDim2.new(0.05,0,0,136)
+    antiBtn.Position = UDim2.new(0.55,0,0,136)
     antiBtn.Text = "Anti AFK: ON"
     antiBtn.Font = Enum.Font.SourceSansBold
     antiBtn.TextSize = 12
