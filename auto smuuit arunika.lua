@@ -1,4 +1,4 @@
--- GUI Simpan Koordinat Mobile-Friendly Final Rapi
+-- GUI Simpan Koordinat Mobile-Friendly Fix Semua
 local player = game.Players.LocalPlayer
 local hrp = player.Character:WaitForChild("HumanoidRootPart")
 local UserInputService = game:GetService("UserInputService")
@@ -54,24 +54,24 @@ printBtn.Parent = frame
 local scrollFrame = Instance.new("ScrollingFrame")
 scrollFrame.Size = UDim2.new(1, -20, 0, 200)
 scrollFrame.Position = UDim2.new(0, 10, 0, 150)
-scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-scrollFrame.ScrollBarThickness = 6
 scrollFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+scrollFrame.ScrollBarThickness = 6
+scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 scrollFrame.Parent = frame
 
+-- Layout vertical
 local uiListLayout = Instance.new("UIListLayout")
 uiListLayout.Parent = scrollFrame
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 uiListLayout.Padding = UDim.new(0,5)
 
--- Fungsi update scrollFrame rapi
+-- Fungsi update koordinat
 local function updateScrollFrame()
     scrollFrame:ClearAllChildren()
-    local labelHeight = 25
-    local padding = 5
+    uiListLayout.Parent = scrollFrame -- pastikan layout tetap ada
     for i, pos in ipairs(savedPositions) do
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1,0,0,labelHeight)
+        label.Size = UDim2.new(1,0,0,25)
         label.BackgroundTransparency = 1
         label.TextColor3 = Color3.fromRGB(255,255,0)
         label.TextScaled = true
@@ -79,7 +79,6 @@ local function updateScrollFrame()
         label.Text = cpName .. ": Vector3.new(" .. pos.X .. ", " .. pos.Y .. ", " .. pos.Z .. ")"
         label.Parent = scrollFrame
     end
-    scrollFrame.CanvasSize = UDim2.new(0,0,#savedPositions*(labelHeight+padding))
 end
 
 -- Fungsi Save Posisi
