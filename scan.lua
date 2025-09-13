@@ -1,7 +1,6 @@
 loadstring([[
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
@@ -64,33 +63,33 @@ local function showNotification(text, duration)
     game:GetService("Debris"):AddItem(notif, duration or 2)
 end
 
-local function createAdornment(part, color)
+local function createAdornment(part)
     local adorn = Instance.new("BoxHandleAdornment")
     adorn.Adornee = part
     adorn.Size = part.Size + Vector3.new(0.2,0.2,0.2)
-    adorn.Color3 = color
+    adorn.Color3 = Color3.fromRGB(255,0,0) -- default merah
     adorn.Transparency = 0.3
     adorn.AlwaysOnTop = true
     adorn.Parent = container
     return adorn
 end
 
--- SCAN LOGIC
+-- SCAN PARTS
 ScanButton.MouseButton1Click:Connect(function()
     container:ClearAllChildren()
     adornments = {}
     selectedParts = {}
     for _, part in pairs(workspace:GetDescendants()) do
         if part:IsA("BasePart") and part.Parent ~= player.Character then
-            adornments[part] = createAdornment(part, Color3.fromRGB(255,0,0))
+            adornments[part] = createAdornment(part)
         end
     end
-    showNotification("Scan complete!", 2)
+    showNotification("Scan complete!",2)
 end)
 
 -- MULTI-SELECT LOGIC
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
     if input.UserInputType == Enum.UserInputType.Touch then
         local ray = camera:ScreenPointToRay(input.Position.X, input.Position.Y)
         local result = workspace:Raycast(ray.Origin, ray.Direction*1000, RaycastParams.new())
@@ -98,16 +97,18 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             local part = result.Instance
             if not selectedParts[part] then
                 selectedParts[part] = true
-                if adornments[part] then adornments[part].Color3 = Color3.fromRGB(0,255,0) end
+                if adornments[part] then adornments[part].Color3 = Color3.fromRGB(0,255,0) -- hijau
+                end
             else
                 selectedParts[part] = nil
-                if adornments[part] then adornments[part].Color3 = Color3.fromRGB(255,0,0) end
+                if adornments[part] then adornments[part].Color3 = Color3.fromRGB(255,0,0) -- kembali merah
+                end
             end
         end
     end
 end)
 
--- DELETE LOGIC
+-- DELETE
 YesButton.MouseButton1Click:Connect(function()
     local count = 0
     for part,_ in pairs(selectedParts) do
@@ -117,17 +118,18 @@ YesButton.MouseButton1Click:Connect(function()
         end
     end
     container:ClearAllChildren()
-    selectedParts = {}
     adornments = {}
-    showNotification(count.." parts deleted!", 2)
+    selectedParts = {}
+    showNotification(count.." parts deleted!",2)
 end)
 
--- CANCEL LOGIC
+-- CANCEL
 NoButton.MouseButton1Click:Connect(function()
     for part,_ in pairs(selectedParts) do
-        if adornments[part] then adornments[part].Color3 = Color3.fromRGB(255,0,0) end
+        if adornments[part] then adornments[part].Color3 = Color3.fromRGB(255,0,0) -- kembali merah
+        end
     end
     selectedParts = {}
-    showNotification("Cancelled!", 2)
+    showNotification("Cancelled!",2)
 end)
 ]])()
