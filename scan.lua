@@ -11,8 +11,8 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = player:WaitForChild("PlayerGui")
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 250, 0, 200)
-Frame.Position = UDim2.new(0.5, -125, 0.5, -100)
+Frame.Size = UDim2.new(0, 300, 0, 250) -- lebih besar
+Frame.Position = UDim2.new(0.5, -150, 0.5, -125)
 Frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
 Frame.Parent = ScreenGui
 Frame.Active = true
@@ -59,18 +59,17 @@ local function createHighlight(part, color)
     local h = Instance.new("Highlight")
     h.Adornee = part
     h.FillColor = color
-    h.FillTransparency = 0.5
-    h.OutlineTransparency = 0.8
+    h.FillTransparency = 0.2 -- lebih jelas
+    h.OutlineTransparency = 0.2
     h.Parent = workspace
     h.Enabled = true
     return h
 end
 
--- Notifikasi
 local function showNotification(text, duration)
     local notif = Instance.new("TextLabel")
     notif.Size = UDim2.new(0.3,0,0.05,0)
-    notif.Position = UDim2.new(0.35,0,0.1,0)
+    notif.Position = UDim2.new(0.35,0,0.05,0)
     notif.BackgroundColor3 = Color3.fromRGB(50,50,50)
     notif.BackgroundTransparency = 0.2
     notif.TextColor3 = Color3.fromRGB(255,255,255)
@@ -114,15 +113,16 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     highlights[part] = createHighlight(part, Color3.fromRGB(0,255,0))
                 end
             else
-                -- jika disentuh lagi, unselect
                 selectedParts[part] = nil
-                highlights[part].FillColor = Color3.fromRGB(255,0,0)
+                if highlights[part] then
+                    highlights[part].FillColor = Color3.fromRGB(255,0,0)
+                end
             end
         end
     end
 end)
 
--- Tombol Yes → hapus semua part hijau
+-- Tombol Yes
 YesButton.MouseButton1Click:Connect(function()
     local count = 0
     for part,_ in pairs(selectedParts) do
@@ -139,7 +139,7 @@ YesButton.MouseButton1Click:Connect(function()
     showNotification(count.." parts deleted!", 2)
 end)
 
--- Tombol No → batal semua pilihan hijau
+-- Tombol No
 NoButton.MouseButton1Click:Connect(function()
     for part,_ in pairs(selectedParts) do
         if part and highlights[part] then
