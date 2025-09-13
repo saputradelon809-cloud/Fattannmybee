@@ -1,6 +1,7 @@
--- 🏔️ AUTO SUMMIT PRO V16 - Summit Kedetect 100%
--- ✅ Semua fitur + Saved CP + Summit sistem kedetect
+-- 🏔️ AUTO SUMMIT PRO V17 - Full Complete
+-- ✅ Noclip / Anti AFK / Auto Play / Manual CP / Saved CP + Manual Save CP
 
+-- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -58,11 +59,11 @@ local function getGameCheckpoints()
     return cps
 end
 
--- Tween atau teleport singkat
+-- Teleport singkat + beri waktu physics register
 local function moveToCP(cp)
     if root and cp then
         root.CFrame = cp.CFrame + Vector3.new(0,3,0)
-        task.wait(0.2) -- beri waktu physics register
+        task.wait(0.2)
     end
 end
 
@@ -91,7 +92,7 @@ local function addSavedCPButton(cp)
         firetouchinterest(root, cp, 0)
         task.wait(0.3)
         firetouchinterest(root, cp, 1)
-        task.wait(0.5) -- beri waktu game register
+        task.wait(0.5)
     end)
 end
 
@@ -161,7 +162,7 @@ screenGui.Name = "AutoSummitGui"
 screenGui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,280,0,440)
+frame.Size = UDim2.new(0,280,0,460)
 frame.Position = UDim2.new(0.35,0,0.25,0)
 frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 frame.Active = true
@@ -171,7 +172,7 @@ frame.Parent = screenGui
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1,0,0,30)
 title.BackgroundColor3 = Color3.fromRGB(50,50,50)
-title.Text = "🏔️ Auto Summit PRO V16"
+title.Text = "🏔️ Auto Summit PRO V17"
 title.TextColor3 = Color3.fromRGB(255,255,255)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 16
