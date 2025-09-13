@@ -1,4 +1,4 @@
--- GUI Simpan Koordinat Mobile-Friendly Final
+-- GUI Simpan Koordinat Mobile-Friendly Final Rapi
 local player = game.Players.LocalPlayer
 local hrp = player.Character:WaitForChild("HumanoidRootPart")
 local UserInputService = game:GetService("UserInputService")
@@ -62,31 +62,30 @@ scrollFrame.Parent = frame
 local uiListLayout = Instance.new("UIListLayout")
 uiListLayout.Parent = scrollFrame
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-uiListLayout.Padding = UDim.new(0, 5)
+uiListLayout.Padding = UDim.new(0,5)
 
--- Fungsi update scrollFrame fix
+-- Fungsi update scrollFrame rapi
 local function updateScrollFrame()
     scrollFrame:ClearAllChildren()
     local labelHeight = 25
     local padding = 5
     for i, pos in ipairs(savedPositions) do
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 0, labelHeight)
+        label.Size = UDim2.new(1,0,0,labelHeight)
         label.BackgroundTransparency = 1
-        label.TextColor3 = Color3.fromRGB(255, 255, 0)
+        label.TextColor3 = Color3.fromRGB(255,255,0)
+        label.TextScaled = true
         local cpName = cpNames[i] or ("CP"..i)
         label.Text = cpName .. ": Vector3.new(" .. pos.X .. ", " .. pos.Y .. ", " .. pos.Z .. ")"
-        label.TextScaled = true
         label.Parent = scrollFrame
     end
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #savedPositions * (25 + 5))
+    scrollFrame.CanvasSize = UDim2.new(0,0,#savedPositions*(labelHeight+padding))
 end
 
 -- Fungsi Save Posisi
 saveBtn.MouseButton1Click:Connect(function()
     local pos = hrp.Position
-    table.insert(savedPositions, pos)
-    -- Nama CP otomatis
+    table.insert(savedPositions,pos)
     local cpName = ""
     if #savedPositions == 1 then
         cpName = "CP1"
@@ -97,14 +96,14 @@ saveBtn.MouseButton1Click:Connect(function()
     else
         cpName = "Summit"
     end
-    table.insert(cpNames, cpName)
+    table.insert(cpNames,cpName)
     updateScrollFrame()
 end)
 
 -- Fungsi Cetak Kode
 printBtn.MouseButton1Click:Connect(function()
     print("Kode koordinat siap pakai:")
-    for i, pos in ipairs(savedPositions) do
+    for i,pos in ipairs(savedPositions) do
         local cpName = cpNames[i] or ("CP"..i)
         print(cpName .. " = Vector3.new(" .. pos.X .. ", " .. pos.Y .. ", " .. pos.Z .. ")")
     end
@@ -138,4 +137,3 @@ header.InputChanged:Connect(function(input)
         end)
     end
 end)
-
