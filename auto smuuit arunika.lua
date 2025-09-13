@@ -1,17 +1,15 @@
--- 🏔️ AUTO SUMMIT PRO V17 - Full Complete
+-- 🏔️ AUTO SUMMIT PRO V18 - Manual Save CP Lebih Jelas
 -- ✅ Noclip / Anti AFK / Auto Play / Manual CP / Saved CP + Manual Save CP
 
--- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local root = character:WaitForChild("HumanoidRootPart")
 
--- Respawn handling
+-- Respawn
 local function bindCharacter(newChar)
     character = newChar
     root = character:WaitForChild("HumanoidRootPart")
@@ -26,13 +24,7 @@ RunService.Stepped:Connect(function()
     if character then
         for _, part in ipairs(character:GetDescendants()) do
             if part:IsA("BasePart") then
-                if status.noclip then
-                    part.CanCollide = false
-                else
-                    if part.Name ~= "HumanoidRootPart" then
-                        part.CanCollide = true
-                    end
-                end
+                part.CanCollide = not status.noclip or part.Name=="HumanoidRootPart"
             end
         end
     end
@@ -59,51 +51,13 @@ local function getGameCheckpoints()
     return cps
 end
 
--- Teleport singkat + beri waktu physics register
-local function moveToCP(cp)
-    if root and cp then
-        root.CFrame = cp.CFrame + Vector3.new(0,3,0)
-        task.wait(0.2)
-    end
-end
-
--- Saved CP
+-- Move + touch + save
 local savedCPs = {}
-local savedFrame = Instance.new("ScrollingFrame")
-savedFrame.Size = UDim2.new(1,-10,0,150)
-savedFrame.Position = UDim2.new(0,5,0,200)
-savedFrame.BackgroundTransparency = 0.5
-savedFrame.CanvasSize = UDim2.new(0,0,2,0)
-savedFrame.ScrollBarThickness = 6
-
-local function addSavedCPButton(cp)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1,-10,0,28)
-    btn.Position = UDim2.new(0,5,0,#savedCPs*32)
-    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 14
-    btn.Text = "Saved CP "..#savedCPs
-    btn.Parent = savedFrame
-
-    btn.MouseButton1Click:Connect(function()
-        moveToCP(cp)
-        firetouchinterest(root, cp, 0)
-        task.wait(0.3)
-        firetouchinterest(root, cp, 1)
-        task.wait(0.5)
-    end)
+local function moveToCP(cp)
+    root.CFrame = cp.CFrame + Vector3.new(0,3,0)
+    task.wait(0.2)
 end
 
-local function saveCP(cp)
-    if not table.find(savedCPs,cp) then
-        table.insert(savedCPs,cp)
-        addSavedCPButton(cp)
-    end
-end
-
--- Teleport + touch + save
 local function touchPart(cp)
     moveToCP(cp)
     firetouchinterest(root, cp, 0)
@@ -111,6 +65,45 @@ local function touchPart(cp)
     firetouchinterest(root, cp, 1)
     task.wait(0.5)
     saveCP(cp)
+end
+
+-- Save CP
+local savedFrame = Instance.new("ScrollingFrame")
+savedFrame.Size = UDim2.new(1,-10,0,150)
+savedFrame.Position = UDim2.new(0,5,0,200)
+savedFrame.BackgroundTransparency = 0.5
+savedFrame.CanvasSize = UDim2.new(0,0,2,0)
+savedFrame.ScrollBarThickness = 6
+
+function saveCP(cp)
+    if not table.find(savedCPs,cp) then
+        table.insert(savedCPs,cp)
+        -- Buat tombol CP di Saved GUI
+        local index = #savedCPs
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1,-10,0,28)
+        btn.Position = UDim2.new(0,5,0,(index-1)*32)
+        btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextSize = 14
+        btn.TextColor3 = Color3.fromRGB(255,255,255)
+        btn.Text = "Saved CP "..index
+        btn.Parent = savedFrame
+
+        -- Lampu indikator hijau/merah
+        local lamp = Instance.new("Frame")
+        lamp.Size = UDim2.new(0,16,0,16)
+        lamp.Position = UDim2.new(1,-20,0.5,-8)
+        lamp.BackgroundColor3 = Color3.fromRGB(0,200,0)
+        lamp.Parent = btn
+
+        btn.MouseButton1Click:Connect(function()
+            moveToCP(cp)
+            firetouchinterest(root, cp, 0)
+            task.wait(0.3)
+            firetouchinterest(root, cp, 1)
+        end)
+    end
 end
 
 -- Auto Play semua CP
@@ -124,38 +117,28 @@ local function playAllCP()
     end
 end
 
--- Stop Auto Play
 local function stopAutoPlay()
     status.autoPlay = false
 end
 
--- Next CP sekali
+-- Next CP
 local function playNextCP()
     local cps = getGameCheckpoints()
     local currentPos = root.Position
-    local nextCP = nil
     for _,cp in ipairs(cps) do
-        local dist = (cp.Position-currentPos).Magnitude
-        if dist>10 then
-            nextCP=cp
+        if (cp.Position-currentPos).Magnitude>10 then
+            touchPart(cp)
+            task.wait(4)
             break
         end
     end
-    if nextCP then
-        touchPart(nextCP)
-        task.wait(4)
-    else
-        warn("⚠️ Tidak ada CP berikutnya")
-    end
 end
 
--- Manual CP
 local function playOneCP(cp)
     touchPart(cp)
     task.wait(4)
 end
 
--- ==================================================
 -- GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoSummitGui"
@@ -172,7 +155,7 @@ frame.Parent = screenGui
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1,0,0,30)
 title.BackgroundColor3 = Color3.fromRGB(50,50,50)
-title.Text = "🏔️ Auto Summit PRO V17"
+title.Text = "🏔️ Auto Summit PRO V18"
 title.TextColor3 = Color3.fromRGB(255,255,255)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 16
@@ -225,7 +208,6 @@ local function makeButton(text,order,callback,parent)
     return btn
 end
 
--- ==================================================
 -- Tombol utama
 makeToggle("🚪 Noclip",1,status,"noclip")
 makeToggle("🕹️ Anti AFK",2,status,"antiAfk")
