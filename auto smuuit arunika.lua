@@ -1,30 +1,45 @@
--- GUI Simpan Koordinat Multi-Posisi + Draggable Bebas + Label CP
+-- GUI Simpan Koordinat Mobile-Friendly
 local player = game.Players.LocalPlayer
 local hrp = player.Character:WaitForChild("HumanoidRootPart")
 
 local savedPositions = {}
 local cpNames = {}
 
--- Buat ScreenGui
+-- ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.Parent = game.CoreGui
 
 -- Frame utama
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 300, 0, 350)
-frame.Position = UDim2.new(0, 50, 0, 50)
+frame.Position = UDim2.new(0, 20, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Parent = gui
 
--- Fungsi drag frame
-local dragging = false
-local dragInput, mousePos, framePos
+-- Header untuk drag
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 40)
+header.Position = UDim2.new(0, 0, 0, 0)
+header.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+header.Parent = frame
 
-frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+local headerLabel = Instance.new("TextLabel")
+headerLabel.Size = UDim2.new(1, 0, 1, 0)
+headerLabel.BackgroundTransparency = 1
+headerLabel.Text = "Coordinate Saver"
+headerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+headerLabel.TextScaled = true
+headerLabel.Parent = header
+
+-- Fungsi drag di mobile (header saja)
+local dragging = false
+local dragInput, startPos, startFramePos
+
+header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
-        mousePos = input.Position
-        framePos = frame.Position
+        startPos = input.Position
+        startFramePos = frame.Position
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
@@ -33,23 +48,23 @@ frame.InputBegan:Connect(function(input)
     end
 end)
 
-frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
+header.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
         dragInput = input
     end
 end)
 
 game:GetService("UserInputService").InputChanged:Connect(function(input)
     if input == dragInput and dragging then
-        local delta = input.Position - mousePos
-        frame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+        local delta = input.Position - startPos
+        frame.Position = UDim2.new(startFramePos.X.Scale, startFramePos.X.Offset + delta.X, startFramePos.Y.Scale, startFramePos.Y.Offset + delta.Y)
     end
 end)
 
 -- Tombol Save Posisi
 local saveBtn = Instance.new("TextButton")
 saveBtn.Size = UDim2.new(1, -20, 0, 40)
-saveBtn.Position = UDim2.new(0, 10, 0, 10)
+saveBtn.Position = UDim2.new(0, 10, 0, 50)
 saveBtn.Text = "Save Posisi"
 saveBtn.BackgroundColor3 = Color3.fromRGB(60, 150, 60)
 saveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -58,20 +73,19 @@ saveBtn.Parent = frame
 -- Tombol Cetak Kode
 local printBtn = Instance.new("TextButton")
 printBtn.Size = UDim2.new(1, -20, 0, 40)
-printBtn.Position = UDim2.new(0, 10, 0, 60)
+printBtn.Position = UDim2.new(0, 10, 0, 100)
 printBtn.Text = "Cetak Kode"
 printBtn.BackgroundColor3 = Color3.fromRGB(150, 60, 60)
 printBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 printBtn.Parent = frame
 
--- ScrollFrame untuk menampilkan koordinat
+-- ScrollFrame untuk koordinat
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1, -20, 0, 230)
-scrollFrame.Position = UDim2.new(0, 10, 0, 110)
+scrollFrame.Size = UDim2.new(1, -20, 0, 200)
+scrollFrame.Position = UDim2.new(0, 10, 0, 150)
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 scrollFrame.ScrollBarThickness = 6
 scrollFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-scrollFrame.Active = false -- jangan halangi drag frame
 scrollFrame.Parent = frame
 
 local uiListLayout = Instance.new("UIListLayout")
@@ -79,7 +93,7 @@ uiListLayout.Parent = scrollFrame
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 uiListLayout.Padding = UDim.new(0, 5)
 
--- Fungsi update GUI
+-- Fungsi update scroll
 local function updateScrollFrame()
     scrollFrame:ClearAllChildren()
     for i, pos in ipairs(savedPositions) do
