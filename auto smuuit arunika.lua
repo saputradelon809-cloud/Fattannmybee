@@ -1,4 +1,4 @@
--- GUI Simpan Koordinat Mobile-Friendly Fix Semua
+-- GUI Simpan Koordinat Mobile-Friendly Fix Tombol Bekerja
 local player = game.Players.LocalPlayer
 local hrp = player.Character:WaitForChild("HumanoidRootPart")
 local UserInputService = game:GetService("UserInputService")
@@ -8,7 +8,7 @@ local cpNames = {}
 
 -- ScreenGui
 local gui = Instance.new("ScreenGui")
-gui.Parent = game.CoreGui
+gui.Parent = player:WaitForChild("PlayerGui") -- penting untuk tombol bekerja di mobile
 
 -- Frame utama
 local frame = Instance.new("Frame")
@@ -32,7 +32,7 @@ headerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 headerLabel.TextScaled = true
 headerLabel.Parent = header
 
--- Tombol Save Posisi
+-- Tombol Save Posisi (SC)
 local saveBtn = Instance.new("TextButton")
 saveBtn.Size = UDim2.new(1, -20, 0, 40)
 saveBtn.Position = UDim2.new(0, 10, 0, 50)
@@ -68,7 +68,7 @@ uiListLayout.Padding = UDim.new(0,5)
 -- Fungsi update koordinat
 local function updateScrollFrame()
     scrollFrame:ClearAllChildren()
-    uiListLayout.Parent = scrollFrame -- pastikan layout tetap ada
+    uiListLayout.Parent = scrollFrame
     for i, pos in ipairs(savedPositions) do
         local label = Instance.new("TextLabel")
         label.Size = UDim2.new(1,0,0,25)
@@ -81,7 +81,7 @@ local function updateScrollFrame()
     end
 end
 
--- Fungsi Save Posisi
+-- Tombol Save Posisi bekerja
 saveBtn.MouseButton1Click:Connect(function()
     local pos = hrp.Position
     table.insert(savedPositions,pos)
@@ -97,9 +97,10 @@ saveBtn.MouseButton1Click:Connect(function()
     end
     table.insert(cpNames,cpName)
     updateScrollFrame()
+    print("Posisi disimpan:", cpName)
 end)
 
--- Fungsi Cetak Kode
+-- Tombol Cetak Kode bekerja
 printBtn.MouseButton1Click:Connect(function()
     print("Kode koordinat siap pakai:")
     for i,pos in ipairs(savedPositions) do
