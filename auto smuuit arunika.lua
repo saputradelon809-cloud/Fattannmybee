@@ -1,21 +1,22 @@
--- GUI Simpan Koordinat Multi-Posisi + Label Otomatis
+-- GUI Simpan Koordinat Multi-Posisi + Draggable + Label CP
 local player = game.Players.LocalPlayer
 local hrp = player.Character:WaitForChild("HumanoidRootPart")
 
 local savedPositions = {}
-local cpNames = {} -- Nama CP otomatis
+local cpNames = {}
 
 -- Buat ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.Parent = game.CoreGui
 
+-- Frame utama (draggable)
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 300, 0, 350)
 frame.Position = UDim2.new(0, 50, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.Parent = gui
 frame.Active = true
-frame.Draggable = true
+frame.Draggable = true -- Bisa digeser
+frame.Parent = gui
 
 -- Tombol Save Posisi
 local saveBtn = Instance.new("TextButton")
@@ -49,7 +50,7 @@ uiListLayout.Parent = scrollFrame
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 uiListLayout.Padding = UDim.new(0, 5)
 
--- Fungsi update GUI dengan label CP otomatis
+-- Fungsi update GUI
 local function updateScrollFrame()
     scrollFrame:ClearAllChildren()
     for i, pos in ipairs(savedPositions) do
