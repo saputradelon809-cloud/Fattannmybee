@@ -1,6 +1,5 @@
 local player = game.Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 
 -- Pastikan HumanoidRootPart siap
 local hrp
@@ -14,7 +13,7 @@ end
 local savedPositions = {}
 local cpNames = {}
 
--- ScreenGui
+-- ScreenGui di PlayerGui
 local gui = Instance.new("ScreenGui")
 gui.Parent = player:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
@@ -22,11 +21,11 @@ gui.ResetOnSpawn = false
 -- Frame utama
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 360, 0, 500)
-frame.Position = UDim2.new(0,20,0,50)
+frame.Position = UDim2.new(0, 20, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 frame.Parent = gui
 
--- Header drag
+-- Header untuk drag
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1,0,0,40)
 header.BackgroundColor3 = Color3.fromRGB(80,80,80)
@@ -122,6 +121,7 @@ local function updateScrollFrame()
         label.Text = cpName .. ": Vector3.new("..pos.X..","..pos.Y..","..pos.Z..")"
         label.Parent = container
 
+        -- Tombol Delete
         local delBtn = Instance.new("TextButton")
         delBtn.Size = UDim2.new(0.15,0,1,0)
         delBtn.Position = UDim2.new(0.7,0,0,0)
@@ -137,6 +137,7 @@ local function updateScrollFrame()
             updateScrollFrame()
         end)
 
+        -- Tombol Edit
         local editBtn = Instance.new("TextButton")
         editBtn.Size = UDim2.new(0.15,0,1,0)
         editBtn.Position = UDim2.new(0.85,0,0,0)
@@ -154,24 +155,25 @@ local function updateScrollFrame()
     end
 end
 
--- Save Posisi
+-- Tombol Save Posisi
 saveBtn.MouseButton1Click:Connect(function()
     if not hrp then return end
     local pos = hrp.Position
     table.insert(savedPositions,pos)
-    local nameInput = nameBox.Text
-    if nameInput=="" then
-        if #savedPositions==1 then nameInput="CP1"
-        elseif #savedPositions==2 then nameInput="CP2"
-        elseif #savedPositions==3 then nameInput="CP3"
-        else nameInput="Summit" end
+
+    local inputName = nameBox.Text
+    if inputName == "" then
+        if #savedPositions==1 then inputName="CP1"
+        elseif #savedPositions==2 then inputName="CP2"
+        elseif #savedPositions==3 then inputName="CP3"
+        else inputName="Summit" end
     end
-    table.insert(cpNames,nameInput)
+    table.insert(cpNames,inputName)
     nameBox.Text = ""
     updateScrollFrame()
 end)
 
--- Cetak Kode
+-- Tombol Cetak Kode
 printBtn.MouseButton1Click:Connect(function()
     print("Kode koordinat siap pakai:")
     for i,pos in ipairs(savedPositions) do
@@ -180,7 +182,7 @@ printBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Auto Teleport
+-- Tombol Auto Teleport
 tpBtn.MouseButton1Click:Connect(function()
     local delayTime = tonumber(delayBox.Text) or 0.5
     for i,pos in ipairs(savedPositions) do
