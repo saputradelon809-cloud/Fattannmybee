@@ -1,8 +1,11 @@
--- LocalScript (StarterPlayerScripts)
+loadstring([[
+-- LocalScript all-in-one Delete Part (scan + select + delete)
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
+local workspace = game:GetService("Workspace")
 
 -- GUI Setup
 local ScreenGui = Instance.new("ScreenGui")
@@ -64,6 +67,13 @@ local function createHighlight(part, color)
     return h
 end
 
+-- Scan semua part di workspace → merah
+for _, part in pairs(workspace:GetDescendants()) do
+    if part:IsA("BasePart") then
+        highlights[part] = createHighlight(part, Color3.fromRGB(255,0,0))
+    end
+end
+
 -- Part selection
 local selectedPart = nil
 
@@ -79,18 +89,18 @@ local function getPartFromTouch(touchPos)
     return nil
 end
 
--- Input detection (tap)
+-- Input detection
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.Touch then
         local part = getPartFromTouch(input.Position)
         if part then
-            -- Kembalikan warna part sebelumnya yang dipilih menjadi merah
+            -- Kembalikan warna part sebelumnya menjadi merah
             if selectedPart and highlights[selectedPart] then
                 highlights[selectedPart].FillColor = Color3.fromRGB(255,0,0)
             end
             selectedPart = part
-            -- Buat highlight hijau jika belum ada, atau ganti warnanya
+            -- Buat highlight hijau jika dipilih
             if highlights[part] then
                 highlights[part].FillColor = Color3.fromRGB(0,255,0)
             else
@@ -104,7 +114,7 @@ end)
 -- Tombol Yes
 YesButton.MouseButton1Click:Connect(function()
     if selectedPart then
-        selectedPart:Destroy() -- Hanya client-side
+        selectedPart:Destroy() -- client-side only
         if highlights[selectedPart] then
             highlights[selectedPart]:Destroy()
             highlights[selectedPart] = nil
@@ -122,10 +132,4 @@ NoButton.MouseButton1Click:Connect(function()
     selectedPart = nil
     Frame.Visible = false
 end)
-
--- Scan otomatis semua part di workspace → merah
-for _, part in pairs(workspace:GetDescendants()) do
-    if part:IsA("BasePart") then
-        highlights[part] = createHighlight(part, Color3.fromRGB(255,0,0))
-    end
-end
+]])()
