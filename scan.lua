@@ -47,8 +47,8 @@ NoButton.TextScaled = true
 local container = Instance.new("Folder", workspace)
 container.Name = "ScanAdornments"
 
-local adornments = {}
-local selectedParts = {}
+local adornments = {}       -- semua part yang discan
+local selectedParts = {}    -- part yang dipilih (hijau)
 
 local function showNotification(text, duration)
     local notif = Instance.new("TextLabel")
@@ -74,7 +74,7 @@ local function createAdornment(part)
     return adorn
 end
 
--- SCAN PARTS
+-- SCAN LOGIC
 ScanButton.MouseButton1Click:Connect(function()
     container:ClearAllChildren()
     adornments = {}
@@ -87,21 +87,24 @@ ScanButton.MouseButton1Click:Connect(function()
     showNotification("Scan complete!",2)
 end)
 
--- MULTI-SELECT LOGIC
+-- TAP SELECT LOGIC
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.UserInputType == Enum.UserInputType.Touch then
         local ray = camera:ScreenPointToRay(input.Position.X, input.Position.Y)
-        local result = workspace:Raycast(ray.Origin, ray.Direction*1000, RaycastParams.new())
-        if result and result.Instance:IsA("BasePart") and result.Instance.Parent ~= player.Character then
+        local rayParams = RaycastParams.new()
+        rayParams.FilterDescendantsInstances = {player.Character}
+        rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+        local result = workspace:Raycast(ray.Origin, ray.Direction*1000, rayParams)
+        if result and result.Instance:IsA("BasePart") then
             local part = result.Instance
-            if not selectedParts[part] then
-                selectedParts[part] = true
-                if adornments[part] then adornments[part].Color3 = Color3.fromRGB(0,255,0) -- hijau
-                end
-            else
-                selectedParts[part] = nil
-                if adornments[part] then adornments[part].Color3 = Color3.fromRGB(255,0,0) -- kembali merah
+            if adornments[part] then -- Hanya part yang discan
+                if not selectedParts[part] then
+                    selectedParts[part] = true
+                    adornments[part].Color3 = Color3.fromRGB(0,255,0)
+                else
+                    selectedParts[part] = nil
+                    adornments[part].Color3 = Color3.fromRGB(255,0,0)
                 end
             end
         end
@@ -126,7 +129,7 @@ end)
 -- CANCEL
 NoButton.MouseButton1Click:Connect(function()
     for part,_ in pairs(selectedParts) do
-        if adornments[part] then adornments[part].Color3 = Color3.fromRGB(255,0,0) -- kembali merah
+        if adornments[part] then adornments[part].Color3 = Color3.fromRGB(255,0,0)
         end
     end
     selectedParts = {}
