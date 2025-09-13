@@ -1,4 +1,4 @@
--- GUI Simpan Koordinat Multi-Posisi + Draggable + Label CP
+-- GUI Simpan Koordinat Multi-Posisi + Draggable Bebas + Label CP
 local player = game.Players.LocalPlayer
 local hrp = player.Character:WaitForChild("HumanoidRootPart")
 
@@ -9,14 +9,42 @@ local cpNames = {}
 local gui = Instance.new("ScreenGui")
 gui.Parent = game.CoreGui
 
--- Frame utama (draggable)
+-- Frame utama
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 300, 0, 350)
 frame.Position = UDim2.new(0, 50, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.Active = true
-frame.Draggable = true -- Bisa digeser
 frame.Parent = gui
+
+-- Fungsi drag frame
+local dragging = false
+local dragInput, mousePos, framePos
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        mousePos = input.Position
+        framePos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - mousePos
+        frame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+    end
+end)
 
 -- Tombol Save Posisi
 local saveBtn = Instance.new("TextButton")
@@ -43,6 +71,7 @@ scrollFrame.Position = UDim2.new(0, 10, 0, 110)
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 scrollFrame.ScrollBarThickness = 6
 scrollFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+scrollFrame.Active = false -- jangan halangi drag frame
 scrollFrame.Parent = frame
 
 local uiListLayout = Instance.new("UIListLayout")
@@ -70,7 +99,7 @@ end
 saveBtn.MouseButton1Click:Connect(function()
     local pos = hrp.Position
     table.insert(savedPositions, pos)
-    -- Buat nama CP otomatis
+    -- Nama CP otomatis
     local cpName = ""
     if #savedPositions == 1 then
         cpName = "CP1"
