@@ -1,12 +1,10 @@
--- 🏔️ AUTO SUMMIT PRO V22 - Verbose & Stable
--- Semua fitur jalan: Noclip, Anti AFK, Auto Play, Manual CP, Saved CP + Manual Save CP
+-- 🏔️ AUTO SUMMIT PRO V23 - Stable & Kedetect
 
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
 
--- Local Player
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local root = character:WaitForChild("HumanoidRootPart")
@@ -17,13 +15,12 @@ local root = character:WaitForChild("HumanoidRootPart")
 local function bindCharacter(newChar)
     character = newChar
     root = character:WaitForChild("HumanoidRootPart")
-    -- Reset autoPlay status saat respawn
     status.autoPlay = false
 end
 player.CharacterAdded:Connect(bindCharacter)
 
 -- =========================
--- Status / Toggles
+-- Status Toggles
 -- =========================
 local status = {
     noclip = false,
@@ -34,12 +31,11 @@ local status = {
 -- =========================
 -- Noclip
 -- =========================
--- Set CanCollide = false untuk semua part kecuali HumanoidRootPart
 RunService.Stepped:Connect(function()
     if character then
         for _, part in ipairs(character:GetDescendants()) do
             if part:IsA("BasePart") then
-                part.CanCollide = not status.noclip or part.Name == "HumanoidRootPart"
+                part.CanCollide = not status.noclip or part.Name=="HumanoidRootPart"
             end
         end
     end
@@ -48,7 +44,6 @@ end)
 -- =========================
 -- Anti AFK
 -- =========================
--- Gunakan VirtualUser untuk klik otomatis saat idle
 player.Idled:Connect(function()
     if status.antiAfk then
         VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
@@ -58,18 +53,16 @@ player.Idled:Connect(function()
 end)
 
 -- =========================
--- Checkpoints Functions
+-- Get Checkpoints
 -- =========================
--- Ambil semua checkpoint di workspace
 local function getGameCheckpoints()
     local cps = {}
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("BasePart") and string.find(obj.Name:lower(), "cp") then
-            table.insert(cps, obj)
+            table.insert(cps,obj)
         end
     end
-    -- Urutkan berdasarkan posisi Y agar autoPlay dari bawah ke atas
-    table.sort(cps, function(a,b) return a.Position.Y < b.Position.Y end)
+    table.sort(cps,function(a,b) return a.Position.Y < b.Position.Y end)
     return cps
 end
 
@@ -77,7 +70,6 @@ end
 -- Saved CP GUI
 -- =========================
 local savedCPs = {}
-
 local savedFrame = Instance.new("ScrollingFrame")
 savedFrame.Size = UDim2.new(1,-10,0,150)
 savedFrame.Position = UDim2.new(0,5,0,200)
@@ -88,22 +80,17 @@ savedFrame.ScrollBarThickness = 6
 -- =========================
 -- Move & Touch CP
 -- =========================
--- Fungsi untuk teleport ke CP + touch + delay register
 local function moveToCP(cp)
     root.CFrame = cp.CFrame + Vector3.new(0,3,0)
     task.wait(0.2)
 end
 
 local function touchCP(cp)
-    -- Pindah ke CP
     moveToCP(cp)
-    -- Fire touch agar kedetect checkpoint
     firetouchinterest(root, cp, 0)
     task.wait(0.3)
     firetouchinterest(root, cp, 1)
-    -- Delay cukup agar sistem Arunika register CP
-    task.wait(2)
-    -- Simpan CP ke GUI
+    task.wait(4) -- delay agar CP register
     saveCP(cp)
 end
 
@@ -111,11 +98,9 @@ end
 -- Save CP
 -- =========================
 function saveCP(cp)
-    if not table.find(savedCPs, cp) then
-        table.insert(savedCPs, cp)
+    if not table.find(savedCPs,cp) then
+        table.insert(savedCPs,cp)
         local index = #savedCPs
-
-        -- Buat tombol untuk teleport ke CP yang disimpan
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1,-10,0,28)
         btn.Position = UDim2.new(0,5,0,(index-1)*32)
@@ -126,14 +111,12 @@ function saveCP(cp)
         btn.Text = "Saved CP "..index
         btn.Parent = savedFrame
 
-        -- Lampu indikator hijau
         local lamp = Instance.new("Frame")
         lamp.Size = UDim2.new(0,16,0,16)
         lamp.Position = UDim2.new(1,-20,0.5,-8)
         lamp.BackgroundColor3 = Color3.fromRGB(0,200,0)
         lamp.Parent = btn
 
-        -- Klik tombol teleport ke CP
         btn.MouseButton1Click:Connect(function()
             touchCP(cp)
         end)
@@ -141,7 +124,7 @@ function saveCP(cp)
 end
 
 -- =========================
--- Auto Play / Next CP / Manual CP
+-- Auto Play / Manual CP
 -- =========================
 local function playAllCP()
     status.autoPlay = true
@@ -149,7 +132,7 @@ local function playAllCP()
     for _, cp in ipairs(cps) do
         if not status.autoPlay then break end
         touchCP(cp)
-        task.wait(4) -- delay antar CP
+        task.wait(4)
     end
 end
 
@@ -161,7 +144,7 @@ local function playNextCP()
     local cps = getGameCheckpoints()
     local currentPos = root.Position
     for _, cp in ipairs(cps) do
-        if (cp.Position - currentPos).Magnitude > 10 then
+        if (cp.Position-currentPos).Magnitude > 10 then
             touchCP(cp)
             task.wait(4)
             break
@@ -192,7 +175,7 @@ frame.Parent = screenGui
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1,0,0,30)
 title.BackgroundColor3 = Color3.fromRGB(50,50,50)
-title.Text = "🏔️ Auto Summit PRO V22"
+title.Text = "🏔️ Auto Summit PRO V23"
 title.TextColor3 = Color3.fromRGB(255,255,255)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 16
@@ -209,7 +192,7 @@ scrolling.Parent = frame
 savedFrame.Parent = frame
 
 -- =========================
--- Helper Functions for GUI
+-- GUI Buttons
 -- =========================
 local function makeToggle(text, order, stateTable, key)
     local btn = Instance.new("TextButton")
@@ -248,9 +231,7 @@ local function makeButton(text, order, callback, parent)
     return btn
 end
 
--- =========================
 -- Main GUI Buttons
--- =========================
 makeToggle("🚪 Noclip",1,status,"noclip")
 makeToggle("🕹️ Anti AFK",2,status,"antiAfk")
 makeButton("▶️ Auto Play Semua CP",3,playAllCP)
@@ -275,9 +256,7 @@ makeButton("💾 Save Current CP",6,function()
     end
 end)
 
--- =========================
 -- Manual CP Buttons
--- =========================
 local cps = getGameCheckpoints()
 local yOffset = 7
 for i, cp in ipairs(cps) do
