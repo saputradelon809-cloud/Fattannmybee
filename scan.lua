@@ -11,8 +11,8 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = player:WaitForChild("PlayerGui")
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 250, 0, 180)
-Frame.Position = UDim2.new(0.5, -125, 0.5, -90)
+Frame.Size = UDim2.new(0, 250, 0, 200)
+Frame.Position = UDim2.new(0.5, -125, 0.5, -100)
 Frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
 Frame.Parent = ScreenGui
 Frame.Active = true
@@ -53,7 +53,7 @@ NoButton.Parent = Frame
 
 -- Highlight table
 local highlights = {}
-local selectedPart = nil
+local selectedParts = {}
 
 local function createHighlight(part, color)
     local h = Instance.new("Highlight")
@@ -80,8 +80,8 @@ local function showNotification(text, duration)
     game:GetService("Debris"):AddItem(notif, duration or 2)
 end
 
--- Scan parts
-local function scanParts()
+-- Scan Parts
+ScanButton.MouseButton1Click:Connect(function()
     for _, part in pairs(workspace:GetDescendants()) do
         if part:IsA("BasePart") then
             if not highlights[part] then
@@ -91,10 +91,8 @@ local function scanParts()
             end
         end
     end
-end
-
-ScanButton.MouseButton1Click:Connect(function()
-    scanParts()
+    selectedParts = {}
+    showNotification("Scan complete!", 2)
 end)
 
 -- Pilih part dengan tap
@@ -108,38 +106,47 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         local result = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
         if result and result.Instance:IsA("BasePart") then
             local part = result.Instance
-            if selectedPart and highlights[selectedPart] then
-                highlights[selectedPart].FillColor = Color3.fromRGB(255,0,0)
-            end
-            selectedPart = part
-            if highlights[part] then
-                highlights[part].FillColor = Color3.fromRGB(0,255,0)
+            if not selectedParts[part] then
+                selectedParts[part] = true
+                if highlights[part] then
+                    highlights[part].FillColor = Color3.fromRGB(0,255,0)
+                else
+                    highlights[part] = createHighlight(part, Color3.fromRGB(0,255,0))
+                end
             else
-                highlights[part] = createHighlight(part, Color3.fromRGB(0,255,0))
+                -- jika disentuh lagi, unselect
+                selectedParts[part] = nil
+                highlights[part].FillColor = Color3.fromRGB(255,0,0)
             end
         end
     end
 end)
 
--- Tombol Yes
+-- Tombol Yes → hapus semua part hijau
 YesButton.MouseButton1Click:Connect(function()
-    if selectedPart then
-        selectedPart:Destroy()
-        if highlights[selectedPart] then
-            highlights[selectedPart]:Destroy()
-            highlights[selectedPart] = nil
+    local count = 0
+    for part,_ in pairs(selectedParts) do
+        if part then
+            part:Destroy()
+            if highlights[part] then
+                highlights[part]:Destroy()
+                highlights[part] = nil
+            end
+            count = count + 1
         end
-        selectedPart = nil
-        showNotification("Part deleted!", 2)
     end
+    selectedParts = {}
+    showNotification(count.." parts deleted!", 2)
 end)
 
--- Tombol No
+-- Tombol No → batal semua pilihan hijau
 NoButton.MouseButton1Click:Connect(function()
-    if selectedPart and highlights[selectedPart] then
-        highlights[selectedPart].FillColor = Color3.fromRGB(255,0,0)
+    for part,_ in pairs(selectedParts) do
+        if part and highlights[part] then
+            highlights[part].FillColor = Color3.fromRGB(255,0,0)
+        end
     end
-    selectedPart = nil
+    selectedParts = {}
     showNotification("Cancelled!", 2)
 end)
 ]])()
