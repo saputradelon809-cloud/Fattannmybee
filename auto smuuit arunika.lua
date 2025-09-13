@@ -1,11 +1,12 @@
--- GUI Simpan Koordinat Mobile-Friendly
+-- GUI Simpan Koordinat Mobile-Friendly Final
 local player = game.Players.LocalPlayer
 local hrp = player.Character:WaitForChild("HumanoidRootPart")
+local UserInputService = game:GetService("UserInputService")
 
 local savedPositions = {}
 local cpNames = {}
 
--- ScreenGui
+-- Buat ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.Parent = game.CoreGui
 
@@ -31,36 +32,6 @@ headerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 headerLabel.TextScaled = true
 headerLabel.Parent = header
 
--- Fungsi drag di mobile (header saja)
-local dragging = false
-local dragInput, startPos, startFramePos
-
-header.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        startPos = input.Position
-        startFramePos = frame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-header.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
-
-game:GetService("UserInputService").InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - startPos
-        frame.Position = UDim2.new(startFramePos.X.Scale, startFramePos.X.Offset + delta.X, startFramePos.Y.Scale, startFramePos.Y.Offset + delta.Y)
-    end
-end)
-
 -- Tombol Save Posisi
 local saveBtn = Instance.new("TextButton")
 saveBtn.Size = UDim2.new(1, -20, 0, 40)
@@ -79,7 +50,7 @@ printBtn.BackgroundColor3 = Color3.fromRGB(150, 60, 60)
 printBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 printBtn.Parent = frame
 
--- ScrollFrame untuk koordinat
+-- ScrollFrame untuk menampilkan koordinat
 local scrollFrame = Instance.new("ScrollingFrame")
 scrollFrame.Size = UDim2.new(1, -20, 0, 200)
 scrollFrame.Position = UDim2.new(0, 10, 0, 150)
@@ -93,7 +64,7 @@ uiListLayout.Parent = scrollFrame
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 uiListLayout.Padding = UDim.new(0, 5)
 
--- Fungsi update scroll
+-- Fungsi update scrollFrame
 local function updateScrollFrame()
     scrollFrame:ClearAllChildren()
     for i, pos in ipairs(savedPositions) do
@@ -134,5 +105,34 @@ printBtn.MouseButton1Click:Connect(function()
     for i, pos in ipairs(savedPositions) do
         local cpName = cpNames[i] or ("CP"..i)
         print(cpName .. " = Vector3.new(" .. pos.X .. ", " .. pos.Y .. ", " .. pos.Z .. ")")
+    end
+end)
+
+-- Drag header (mobile-friendly)
+local dragging = false
+local dragStartPos
+local frameStartPos
+
+header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStartPos = input.Position
+        frameStartPos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+header.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        UserInputService.InputChanged:Connect(function(move)
+            if dragging and move.UserInputType == Enum.UserInputType.Touch then
+                local delta = move.Position - dragStartPos
+                frame.Position = UDim2.new(frameStartPos.X.Scale, frameStartPos.X.Offset + delta.X, frameStartPos.Y.Scale, frameStartPos.Y.Offset + delta.Y)
+            end
+        end)
     end
 end)
