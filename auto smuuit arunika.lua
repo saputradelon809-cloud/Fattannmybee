@@ -6,7 +6,7 @@ local UserInputService = game:GetService("UserInputService")
 local savedPositions = {}
 local cpNames = {}
 
--- Buat ScreenGui
+-- ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.Parent = game.CoreGui
 
@@ -50,7 +50,7 @@ printBtn.BackgroundColor3 = Color3.fromRGB(150, 60, 60)
 printBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 printBtn.Parent = frame
 
--- ScrollFrame untuk menampilkan koordinat
+-- ScrollFrame untuk koordinat
 local scrollFrame = Instance.new("ScrollingFrame")
 scrollFrame.Size = UDim2.new(1, -20, 0, 200)
 scrollFrame.Position = UDim2.new(0, 10, 0, 150)
@@ -64,12 +64,14 @@ uiListLayout.Parent = scrollFrame
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 uiListLayout.Padding = UDim.new(0, 5)
 
--- Fungsi update scrollFrame
+-- Fungsi update scrollFrame fix
 local function updateScrollFrame()
     scrollFrame:ClearAllChildren()
+    local labelHeight = 25
+    local padding = 5
     for i, pos in ipairs(savedPositions) do
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 0, 25)
+        label.Size = UDim2.new(1, 0, 0, labelHeight)
         label.BackgroundTransparency = 1
         label.TextColor3 = Color3.fromRGB(255, 255, 0)
         local cpName = cpNames[i] or ("CP"..i)
@@ -77,7 +79,7 @@ local function updateScrollFrame()
         label.TextScaled = true
         label.Parent = scrollFrame
     end
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #savedPositions * 30)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #savedPositions * (25 + 5))
 end
 
 -- Fungsi Save Posisi
@@ -108,7 +110,7 @@ printBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Drag header (mobile-friendly)
+-- Drag header mobile-friendly
 local dragging = false
 local dragStartPos
 local frameStartPos
@@ -136,3 +138,4 @@ header.InputChanged:Connect(function(input)
         end)
     end
 end)
+
