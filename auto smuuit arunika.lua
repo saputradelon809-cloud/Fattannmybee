@@ -1,803 +1,757 @@
--- Full Map Control GUI (LocalScript)
--- Tampil seperti "Script Loader" (judul + stacked long buttons + X)
--- Gabungan fitur: Fly, ESP, Player List (teleport/freeze/rope), Scan/Delete parts, WalkFling, Run/Jump adjust, Warp, Shiftlock, dll.
+-- FATTANHUB - FULL DETAILED (single-file)
+-- Features:
+--  - Login (optional) (password = "fattanhubGG")
+--  - Main GUI: Sidebar tabs (Movement, ESP, Teleport, Tools, Settings)
+--  - Movement: WalkSpeed / JumpPower (manual input + +/-), Fly (toggle, up/down), hotkeys
+--  - ESP: persistent highlight/name tags, auto-updates on join/respawn
+--  - Teleport: player list + input + teleport button
+--  - Tools: Scan Parts (highlight), Delete Part (click confirm), Delete All, Restore, Rope (3D visual pull), Freeze selected, WalkFling (invisible block), Stop All Ropes
+--  - Confirm modal and Notifications integrated into GUI
+--  - Saves some settings to local files if executor supports writefile/readfile (safe)
+--  - Comments included for clarity; variables names clear for easy edits
 
+-- ====== CONFIG ======
+local CORRECT_PASSWORD = "fattanhubGG"          -- change if needed
+local LOGO_ASSET = "rbxassetid://6031068426"    -- change to your decal if you want
+
+-- ====== SERVICES ======
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
-local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Cleanup old GUI
-local OLD = playerGui:FindFirstChild("MapControlGUI_v2")
-if OLD then OLD:Destroy() end
-
--- Main ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "MapControlGUI_v2"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = playerGui
-
--- Style colors (you bisa adjust)
-local bgColor = Color3.fromRGB(20,20,24)
-local titleColor = Color3.fromRGB(38,44,58)
-local btnColor = Color3.fromRGB(43,50,63)
-local btnHover = Color3.fromRGB(60,68,90)
-local accent = Color3.fromRGB(255,255,255)
-
--- MAIN FRAME (mirip screenshot)
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 220, 0, 320)
-mainFrame.Position = UDim2.new(0.06, 0, 0.22, 0)
-mainFrame.BackgroundColor3 = bgColor
-mainFrame.BorderSizePixel = 0
-mainFrame.Parent = screenGui
-local mainCorner = Instance.new("UICorner", mainFrame)
-mainCorner.CornerRadius = UDim.new(0, 10)
-
--- Title bar
-local titleBar = Instance.new("Frame", mainFrame)
-titleBar.Name = "TitleBar"
-titleBar.Size = UDim2.new(1, 0, 0, 40)
-titleBar.Position = UDim2.new(0, 0, 0, 0)
-titleBar.BackgroundColor3 = titleColor
-titleBar.BorderSizePixel = 0
-local titleCorner = Instance.new("UICorner", titleBar)
-titleCorner.CornerRadius = UDim.new(0, 8)
-
-local titleLabel = Instance.new("TextLabel", titleBar)
-titleLabel.Size = UDim2.new(1, -44, 1, 0)
-titleLabel.Position = UDim2.new(0, 12, 0, 0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "Script Loader"
-titleLabel.Font = Enum.Font.GothamBold
-titleLabel.TextSize = 16
-titleLabel.TextColor3 = accent
-titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- Close button (red X)
-local closeBtn = Instance.new("TextButton", titleBar)
-closeBtn.Size = UDim2.new(0, 34, 0, 28)
-closeBtn.Position = UDim2.new(1, -40, 0.5, -14)
-closeBtn.Text = "X"
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 16
-closeBtn.TextColor3 = Color3.new(1,1,1)
-closeBtn.BackgroundColor3 = Color3.fromRGB(200,40,40)
-closeBtn.BorderSizePixel = 0
-local closeCorner = Instance.new("UICorner", closeBtn); closeCorner.CornerRadius = UDim.new(0,6)
-
-closeBtn.MouseButton1Click:Connect(function()
-    screenGui.Enabled = false
-end)
-
--- Make mainFrame draggable (custom)
-do
-    local dragging, dragInput, dragStart, startPos
-    local function update(input)
-        local delta = input.Position - dragStart
-        local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        mainFrame.Position = newPos
-    end
-    titleBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = mainFrame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    titleBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            update(input)
-        end
-    end)
-end
-
--- Utility: create stacked long buttons like screenshot
-local function makeLongButton(text, order, parent, callback)
-    local marginTop = 52
-    local spacing = 42
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -24, 0, 36)
-    btn.Position = UDim2.new(0, 12, 0, marginTop + (order * spacing))
-    btn.BackgroundColor3 = btnColor
-    btn.BorderSizePixel = 0
-    btn.AutoButtonColor = false
-    btn.Font = Enum.Font.GothamBold
-    btn.Text = text
-    btn.TextSize = 14
-    btn.TextColor3 = accent
-    btn.Parent = parent
-    local corner = Instance.new("UICorner", btn); corner.CornerRadius = UDim.new(0,6)
-
-    -- hover effect
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = btnHover
-    end)
-    btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = btnColor
-    end)
-
-    if callback then
-        btn.MouseButton1Click:Connect(function()
-            pcall(callback)
+-- Fallback for GUI parent (CoreGui preferred; fallback PlayerGui)
+local function getGuiParent()
+    local ok, cg = pcall(function() return CoreGui end)
+    if ok and cg then
+        -- test if we can parent to CoreGui
+        local worked = pcall(function()
+            local t = Instance.new("ScreenGui")
+            t.Parent = cg
+            t:Destroy()
         end)
+        if worked then return cg end
     end
-    return btn
+    return LocalPlayer:WaitForChild("PlayerGui")
+end
+local GUI_PARENT = getGuiParent()
+
+-- Executor capabilities
+local HAS_WRITEFILE = type(writefile) == "function"
+local HAS_READFILE = type(readfile) == "function"
+local SETTINGS_PATH = "FattanHub_settings.json"
+
+-- Safe save/load
+local function saveSettings(tbl)
+    if not HAS_WRITEFILE then return end
+    pcall(function()
+        writefile(SETTINGS_PATH, HttpService:JSONEncode(tbl))
+    end)
+end
+local function loadSettings()
+    if not HAS_READFILE then return nil end
+    local ok, content = pcall(function() return readfile(SETTINGS_PATH) end)
+    if not ok or not content then return nil end
+    local ok2, tbl = pcall(function() return HttpService:JSONDecode(content) end)
+    if ok2 and type(tbl) == "table" then return tbl end
+    return nil
 end
 
--- ======================================================
--- Start : Feature implementations (adapted from long script)
--- ======================================================
+-- Default settings
+local SETTINGS = {
+    walkSpeed = 16,
+    jumpPower = 50,
+    esp = false,
+    flySpeed = 80,
+    flingPower = 160,
+}
 
--- Helper: safe char and humanoid root part
-local function getCharacter()
+do
+    local loaded = loadSettings()
+    if loaded then
+        for k,v in pairs(loaded) do SETTINGS[k] = v end
+    end
+end
+
+-- ====== UTIL HELPERS ======
+local function new(class, props)
+    local obj = Instance.new(class)
+    if props then
+        for k,v in pairs(props) do
+            pcall(function() obj[k] = v end)
+        end
+    end
+    return obj
+end
+
+local function clamp(n, a, b) return math.max(a, math.min(b, n)) end
+local function safeChar()
     return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 end
-local function getHumanoid()
-    local ch = LocalPlayer.Character
-    if ch then return ch:FindFirstChildOfClass("Humanoid") end
-end
 
--- ---------- Fly (joystick-like) ----------
-local flying = false
-local flyBV, flyBG, flyConn
-local flySpeed = 80
-local upHold, downHold = false, false
-local verticalSpeed = 60
-
-local function startFly()
-    if flying then return end
-    flying = true
-    local ch = getCharacter()
-    local hrp = ch:WaitForChild("HumanoidRootPart")
-    local hum = ch:FindFirstChildOfClass("Humanoid")
-    if hum then pcall(function() hum.PlatformStand = true end) end
-
-    flyBV = Instance.new("BodyVelocity")
-    flyBV.MaxForce = Vector3.new(9e9,9e9,9e9)
-    flyBV.P = 1250
-    flyBV.Velocity = Vector3.zero
-    flyBV.Parent = hrp
-
-    flyBG = Instance.new("BodyGyro")
-    flyBG.MaxTorque = Vector3.new(9e9,9e9,9e9)
-    flyBG.P = 5000
-    flyBG.CFrame = hrp.CFrame
-    flyBG.Parent = hrp
-
-    flyConn = RunService.Heartbeat:Connect(function()
-        if not flying then return end
-        local char = getCharacter()
-        local hrp2 = char:FindFirstChild("HumanoidRootPart")
-        local hum2 = char:FindFirstChildOfClass("Humanoid")
-        if not hrp2 or not hum2 then return end
-        local moveDir = hum2.MoveDirection
-        local vx, vy, vz = 0, 0, 0
-        if moveDir.Magnitude > 0 then
-            local v = moveDir.Unit * flySpeed
-            vx, vy, vz = v.X, v.Y, v.Z
-        end
-        if upHold then vy = verticalSpeed elseif downHold then vy = -verticalSpeed end
-        flyBV.Velocity = Vector3.new(vx, vy, vz)
-        flyBG.CFrame = hrp2.CFrame
+-- Notification helper (small popup on GUI)
+local function notify(parent, text, timeSec)
+    timeSec = timeSec or 2
+    local notif = new("Frame", {Size = UDim2.new(0,300,0,36), BackgroundColor3 = Color3.fromRGB(32,32,36), Parent = parent})
+    local corner = new("UICorner", {Parent = notif, CornerRadius = UDim.new(0,8)})
+    notif.Position = UDim2.new(0.5, -150, 0.02, 0)
+    local lbl = new("TextLabel", {Parent = notif, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Text = text, Font = Enum.Font.Gotham, TextColor3 = Color3.new(1,1,1), TextSize = 15})
+    notif.AnchorPoint = Vector2.new(0.5, 0)
+    notif.Position = UDim2.new(0.5, 0, 0.02, 0)
+    notif.ClipsDescendants = true
+    notif.ZIndex = 50
+    -- fade in/out
+    notif.BackgroundTransparency = 1
+    lbl.TextTransparency = 1
+    TweenService:Create(notif, TweenInfo.new(0.18), {BackgroundTransparency = 0}):Play()
+    TweenService:Create(lbl, TweenInfo.new(0.18), {TextTransparency = 0}):Play()
+    delay(timeSec, function()
+        TweenService:Create(notif, TweenInfo.new(0.18), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(lbl, TweenInfo.new(0.18), {TextTransparency = 1}):Play()
+        delay(0.25, function() pcall(function() notif:Destroy() end) end)
     end)
 end
 
-local function stopFly()
-    if not flying then return end
-    flying = false
-    if flyConn then flyConn:Disconnect(); flyConn = nil end
-    if flyBV and flyBV.Parent then flyBV:Destroy() end
-    if flyBG and flyBG.Parent then flyBG:Destroy() end
-    flyBV, flyBG = nil, nil
-    local ch = getCharacter(); local hum = ch and ch:FindFirstChildOfClass("Humanoid")
-    if hum then pcall(function() hum.PlatformStand = false end) end
+-- ====== REMOVE OLD GUI (safe) ======
+pcall(function()
+    local prev = GUI_PARENT:FindFirstChild("FattanHub_MainGui")
+    if prev then prev:Destroy() end
+end)
+
+-- ====== BUILD GUI ======
+local ScreenGui = new("ScreenGui", {Name = "FattanHub_MainGui", ResetOnSpawn = false, Parent = GUI_PARENT})
+
+-- Main container
+local MainFrame = new("Frame", {Parent = ScreenGui, Name = "MainFrame", Size = UDim2.new(0, 620, 0, 460), Position = UDim2.new(0.5, -310, 0.5, -230), BackgroundColor3 = Color3.fromRGB(18,18,20), BorderSizePixel = 0})
+new("UICorner", {Parent = MainFrame, CornerRadius = UDim.new(0, 12)})
+new("UIStroke", {Parent = MainFrame, Thickness = 1, Transparency = 0.8})
+
+-- Header
+local Header = new("Frame", {Parent = MainFrame, Size = UDim2.new(1,0,0,44), BackgroundColor3 = Color3.fromRGB(5, 80, 160)})
+new("UICorner", {Parent = Header, CornerRadius = UDim.new(0, 10)})
+local Title = new("TextLabel", {Parent = Header, Size = UDim2.new(0.6,0,1,0), Position = UDim2.new(0,12,0,0), BackgroundTransparency = 1, Text = "FattanHub", Font = Enum.Font.GothamBlack, TextSize = 20, TextColor3 = Color3.fromRGB(245,245,245), TextXAlignment = Enum.TextXAlignment.Left})
+local Ver = new("TextLabel", {Parent = Header, Size = UDim2.new(0.4,-24,1,0), Position = UDim2.new(0.6,12,0,0), BackgroundTransparency = 1, Text = "v3.0", Font = Enum.Font.SourceSansSemibold, TextSize = 14, TextColor3 = Color3.fromRGB(230,230,230), TextXAlignment = Enum.TextXAlignment.Right})
+-- Minimize/Close
+local CloseBtn = new("TextButton", {Parent = Header, Size = UDim2.new(0,38,0,26), Position = UDim2.new(1,-46,0,8), Text = "X", Font = Enum.Font.GothamBold, TextSize = 16, BackgroundColor3 = Color3.fromRGB(200,50,50), TextColor3 = Color3.new(1,1,1)})
+new("UICorner", {Parent = CloseBtn, CornerRadius = UDim.new(0,6)})
+local MinBtn = new("TextButton", {Parent = Header, Size = UDim2.new(0,38,0,26), Position = UDim2.new(1,-92,0,8), Text = "—", Font = Enum.Font.GothamBold, TextSize = 16, BackgroundColor3 = Color3.fromRGB(200,180,60), TextColor3 = Color3.new(1,1,1)})
+new("UICorner", {Parent = MinBtn, CornerRadius = UDim.new(0,6)})
+
+-- Minimize icon (small)
+local MiniIcon = new("ImageButton", {Parent = ScreenGui, Name = "MiniIcon", Size = UDim2.new(0,56,0,56), Position = UDim2.new(0.02,0,0.78,0), BackgroundColor3 = Color3.fromRGB(8,44,110), AutoButtonColor = true, Visible = false, Image = LOGO_ASSET})
+new("UICorner", {Parent = MiniIcon, CornerRadius = UDim.new(1,0)})
+
+MinBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    MiniIcon.Visible = true
+end)
+MiniIcon.MouseButton1Click:Connect(function()
+    MainFrame.Visible = true
+    MiniIcon.Visible = false
+end)
+CloseBtn.MouseButton1Click:Connect(function() pcall(function() ScreenGui:Destroy() end) end)
+
+-- Layout: sidebar + content area
+local SideBar = new("Frame", {Parent = MainFrame, Size = UDim2.new(0,160,1,-64), Position = UDim2.new(0,12,0,52), BackgroundTransparency = 1})
+local Content = new("Frame", {Parent = MainFrame, Size = UDim2.new(1,-196,1,-64), Position = UDim2.new(0,188,0,52), BackgroundTransparency = 1})
+
+new("UIListLayout", {Parent = SideBar, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0,8)})
+new("UIPadding", {Parent = SideBar, PaddingTop = UDim.new(0,6), PaddingLeft = UDim.new(0,6)})
+
+-- Create sidebar button factory
+local function makeSideBtn(text)
+    local b = new("TextButton", {Parent = SideBar, Size = UDim2.new(1,-12,0,36), BackgroundColor3 = Color3.fromRGB(26,30,36), Text = text, Font = Enum.Font.GothamSemibold, TextSize = 14, TextColor3 = Color3.fromRGB(230,230,230)})
+    new("UICorner", {Parent = b, CornerRadius = UDim.new(0,8)})
+    return b
 end
 
--- Up/Down hold detection (keyboard)
-UserInputService.InputBegan:Connect(function(i, gpe)
+-- Tabs
+local tabs = {}
+local pages = {}
+
+local tabNames = {"Movement","ESP","Teleport","Tools","Settings"}
+for i,name in ipairs(tabNames) do
+    local btn = makeSideBtn(name)
+    local page = new("Frame", {Parent = Content, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Visible = false})
+    pages[name] = page
+    tabs[name] = btn
+    btn.MouseButton1Click:Connect(function()
+        for k,v in pairs(pages) do v.Visible = false end
+        page.Visible = true
+    end)
+end
+pages["Movement"].Visible = true
+
+-- ===== Movement Page =====
+local M = pages["Movement"]
+new("UIPadding", {Parent = M, PaddingTop = UDim.new(0,6), PaddingLeft = UDim.new(0,6)})
+local mvLayout = new("UIListLayout", {Parent = M, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0,8)})
+
+-- WalkSpeed row
+local walkFrame = new("Frame", {Parent = M, Size = UDim2.new(1,0,0,36), BackgroundTransparency = 1})
+local walkLbl = new("TextLabel", {Parent = walkFrame, Size = UDim2.new(0.5,0,1,0), BackgroundTransparency = 1, Text = "Walk Speed", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Color3.new(1,1,1)})
+local walkMinus = new("TextButton", {Parent = walkFrame, Size = UDim2.new(0,36,0,28), Position = UDim2.new(0.62,0,0,4), Text = "−", Font = Enum.Font.GothamBold, TextSize = 18, BackgroundColor3 = Color3.fromRGB(160,40,40)})
+local walkInput = new("TextBox", {Parent = walkFrame, Size = UDim2.new(0,84,0,28), Position = UDim2.new(0.73,0,0,4), BackgroundColor3 = Color3.fromRGB(12,30,60), TextColor3 = Color3.new(1,1,1), Text = tostring(SETTINGS.walkSpeed), Font = Enum.Font.GothamSemibold, TextSize = 14})
+local walkPlus = new("TextButton", {Parent = walkFrame, Size = UDim2.new(0,36,0,28), Position = UDim2.new(0.92,0,0,4), Text = "+", Font = Enum.Font.GothamBold, TextSize = 18, BackgroundColor3 = Color3.fromRGB(40,120,40)})
+new("UICorner", {Parent = walkMinus, CornerRadius = UDim.new(0,6)})
+new("UICorner", {Parent = walkPlus, CornerRadius = UDim.new(0,6)})
+new("UICorner", {Parent = walkInput, CornerRadius = UDim.new(0,6)})
+
+local function setWalkSpeed(val)
+    val = tonumber(val)
+    if not val then return end
+    val = clamp(math.floor(val),1,1000)
+    SETTINGS.walkSpeed = val
+    walkInput.Text = tostring(val)
+    local ch = LocalPlayer.Character
+    if ch then
+        local hum = ch:FindFirstChildOfClass("Humanoid")
+        if hum then pcall(function() hum.WalkSpeed = val end) end
+    end
+    saveSettings(SETTINGS)
+    notify(MainFrame, "WalkSpeed set to "..tostring(val), 1.6)
+end
+
+walkMinus.MouseButton1Click:Connect(function() setWalkSpeed(SETTINGS.walkSpeed - 1) end)
+walkPlus.MouseButton1Click:Connect(function() setWalkSpeed(SETTINGS.walkSpeed + 1) end)
+walkInput.FocusLost:Connect(function(enter) if enter then setWalkSpeed(walkInput.Text) end end)
+
+-- Jump row
+local jumpFrame = new("Frame", {Parent = M, Size = UDim2.new(1,0,0,36), BackgroundTransparency = 1})
+local jumpLbl = new("TextLabel", {Parent = jumpFrame, Size = UDim2.new(0.5,0,1,0), BackgroundTransparency = 1, Text = "Jump Power", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Color3.new(1,1,1)})
+local jumpMinus = new("TextButton", {Parent = jumpFrame, Size = UDim2.new(0,36,0,28), Position = UDim2.new(0.62,0,0,4), Text = "−", Font = Enum.Font.GothamBold, TextSize = 18, BackgroundColor3 = Color3.fromRGB(160,40,40)})
+local jumpInput = new("TextBox", {Parent = jumpFrame, Size = UDim2.new(0,84,0,28), Position = UDim2.new(0.73,0,0,4), BackgroundColor3 = Color3.fromRGB(12,30,60), TextColor3 = Color3.new(1,1,1), Text = tostring(SETTINGS.jumpPower), Font = Enum.Font.GothamSemibold, TextSize = 14})
+local jumpPlus = new("TextButton", {Parent = jumpFrame, Size = UDim2.new(0,36,0,28), Position = UDim2.new(0.92,0,0,4), Text = "+", Font = Enum.Font.GothamBold, TextSize = 18, BackgroundColor3 = Color3.fromRGB(40,120,40)})
+new("UICorner", {Parent = jumpMinus, CornerRadius = UDim.new(0,6)})
+new("UICorner", {Parent = jumpPlus, CornerRadius = UDim.new(0,6)})
+new("UICorner", {Parent = jumpInput, CornerRadius = UDim.new(0,6)})
+
+local function setJumpPower(val)
+    val = tonumber(val)
+    if not val then return end
+    val = clamp(math.floor(val),1,500)
+    SETTINGS.jumpPower = val
+    jumpInput.Text = tostring(val)
+    local ch = LocalPlayer.Character
+    if ch then
+        local hum = ch:FindFirstChildOfClass("Humanoid")
+        if hum then pcall(function() hum.UseJumpPower = true; hum.JumpPower = val end) end
+    end
+    saveSettings(SETTINGS)
+    notify(MainFrame, "JumpPower set to "..tostring(val), 1.6)
+end
+
+jumpMinus.MouseButton1Click:Connect(function() setJumpPower(SETTINGS.jumpPower - 1) end)
+jumpPlus.MouseButton1Click:Connect(function() setJumpPower(SETTINGS.jumpPower + 1) end)
+jumpInput.FocusLost:Connect(function(enter) if enter then setJumpPower(jumpInput.Text) end end)
+
+-- Fly controls (toggle + up/down keys E/Q)
+local flyToggleBtn = new("TextButton", {Parent = M, Size = UDim2.new(0, 200, 0, 34), Text = "Toggle Fly", BackgroundColor3 = Color3.fromRGB(40,110,200), Font = Enum.Font.GothamSemibold})
+new("UICorner", {Parent = flyToggleBtn, CornerRadius = UDim.new(0,8)})
+local flyActive = false
+local flyBV, flyBG, flyConn = nil, nil, nil
+local flyUp, flyDown = false, false
+
+flyToggleBtn.MouseButton1Click:Connect(function()
+    if flyActive then
+        flyActive = false
+        if flyConn then flyConn:Disconnect(); flyConn = nil end
+        if flyBV then flyBV:Destroy(); flyBV=nil end
+        if flyBG then flyBG:Destroy(); flyBG=nil end
+        notify(MainFrame, "Fly disabled", 1.2)
+    else
+        local ch = safeChar()
+        local hrp = ch:FindFirstChild("HumanoidRootPart")
+        if not hrp then notify(MainFrame, "No character found", 1.2); return end
+        flyActive = true
+        flyBV = new("BodyVelocity", {Parent = hrp, MaxForce = Vector3.new(9e9,9e9,9e9), P = 1250, Velocity = Vector3.zero})
+        flyBG = new("BodyGyro", {Parent = hrp, MaxTorque = Vector3.new(9e9,9e9,9e9), P = 5000, CFrame = hrp.CFrame})
+        flyConn = RunService.Heartbeat:Connect(function()
+            if not flyActive then return end
+            local ch = safeChar()
+            local hrp2 = ch:FindFirstChild("HumanoidRootPart")
+            local hum = ch:FindFirstChildOfClass("Humanoid")
+            if not hrp2 or not hum then return end
+            local moveDir = hum.MoveDirection
+            local vx,vy,vz = 0,0,0
+            if moveDir.Magnitude > 0 then
+                local v = moveDir.Unit * SETTINGS.flySpeed
+                vx,vy,vz = v.X, v.Y, v.Z
+            end
+            if flyUp then vy = SETTINGS.flySpeed end
+            if flyDown then vy = -SETTINGS.flySpeed end
+            if flyBV then flyBV.Velocity = Vector3.new(vx, vy, vz) end
+            if flyBG and hrp2 then flyBG.CFrame = hrp2.CFrame end
+        end)
+        notify(MainFrame, "Fly enabled (E/Q: up/down)", 2)
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(inp, gpe)
     if gpe then return end
-    if i.KeyCode == Enum.KeyCode.E then upHold = true end
-    if i.KeyCode == Enum.KeyCode.Q then downHold = true end
+    if inp.KeyCode == Enum.KeyCode.E then flyUp = true end
+    if inp.KeyCode == Enum.KeyCode.Q then flyDown = true end
 end)
-UserInputService.InputEnded:Connect(function(i, gpe)
-    if i.KeyCode == Enum.KeyCode.E then upHold = false end
-    if i.KeyCode == Enum.KeyCode.Q then downHold = false end
+UserInputService.InputEnded:Connect(function(inp)
+    if inp.KeyCode == Enum.KeyCode.E then flyUp = false end
+    if inp.KeyCode == Enum.KeyCode.Q then flyDown = false end
 end)
 
--- ---------- ESP (simple highlight + name tag) ----------
-local espEnabled = false
-local function addESPToPlayer(p)
-    if not p.Character then return end
-    if p == LocalPlayer then return end
-    if p.Character:FindFirstChild("MapESP_Tag") then return end
-    local head = p.Character:FindFirstChild("Head") or p.Character:FindFirstChild("HumanoidRootPart")
+-- ===== ESP Page =====
+local ESP = pages["ESP"]
+new("UIPadding", {Parent = ESP, PaddingTop = UDim.new(0,6), PaddingLeft = UDim.new(0,6)})
+local espToggle = new("TextButton", {Parent = ESP, Size = UDim2.new(0,160,0,36), Text = "Toggle ESP", BackgroundColor3 = Color3.fromRGB(40,110,200), Font = Enum.Font.GothamSemibold})
+new("UICorner", {Parent = espToggle, CornerRadius = UDim.new(0,8)})
+local espEnabled = SETTINGS.esp
+local espObjects = {} -- player -> {highlight,billboard}
+
+local function makeNameTag(player)
+    if not player.Character then return end
+    local head = player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("HumanoidRootPart")
     if not head then return end
-    local bg = Instance.new("BillboardGui", head)
-    bg.Name = "MapESP_Tag"
-    bg.Size = UDim2.new(0,120,0,28)
-    bg.AlwaysOnTop = true
-    bg.StudsOffset = Vector3.new(0,2.6,0)
-    local lbl = Instance.new("TextLabel", bg)
-    lbl.Size = UDim2.new(1,0,1,0)
-    lbl.BackgroundTransparency = 1
-    lbl.Font = Enum.Font.GothamSemibold
-    lbl.TextSize = 14
-    lbl.TextColor3 = Color3.new(1,1,1)
-    lbl.Text = p.Name
+    if head:FindFirstChild("FattanNameTag") then return end
+    local bg = new("BillboardGui", {Parent = head, Name = "FattanNameTag", Size = UDim2.new(0,120,0,28), StudsOffset = Vector3.new(0,2.6,0), AlwaysOnTop = true})
+    local lbl = new("TextLabel", {Parent = bg, Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Text = player.Name, Font = Enum.Font.GothamBold, TextSize = 14})
+    if player.TeamColor == LocalPlayer.TeamColor then lbl.TextColor3 = Color3.fromRGB(0,255,0) else lbl.TextColor3 = Color3.fromRGB(255,0,0) end
+    espObjects[player] = espObjects[player] or {}
+    espObjects[player].billboard = bg
 end
 
-local function removeESPFromPlayer(p)
-    if p.Character then
-        local head = p.Character:FindFirstChild("Head") or p.Character:FindFirstChild("HumanoidRootPart")
-        if head and head:FindFirstChild("MapESP_Tag") then head.MapESP_Tag:Destroy() end
-        if p.Character:FindFirstChild("MapHighlight") then p.Character.MapHighlight:Destroy() end
+local function removeNameTag(player)
+    if player.Character then
+        local head = player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("HumanoidRootPart")
+        if head and head:FindFirstChild("FattanNameTag") then head.FattanNameTag:Destroy() end
     end
+    if espObjects[player] and espObjects[player].highlight then
+        pcall(function() espObjects[player].highlight:Destroy() end)
+    end
+    espObjects[player] = nil
 end
 
--- ---------- Player list UI (for selecting target) ----------
-local selectedPlayerName = nil
+local function enableESP()
+    espEnabled = true
+    SETTINGS.esp = true
+    saveSettings(SETTINGS)
+    for _,pl in pairs(Players:GetPlayers()) do
+        if pl ~= LocalPlayer then
+            if pl.Character then
+                -- Highlight
+                if not pl.Character:FindFirstChildWhichIsA("Highlight") then
+                    local h = new("Highlight")
+                    h.Parent = pl.Character
+                    h.Name = "FattanESPHighlight"
+                    if pl.TeamColor == LocalPlayer.TeamColor then h.FillColor = Color3.fromRGB(0,255,0) else h.FillColor = Color3.fromRGB(255,0,0) end
+                    h.OutlineColor = Color3.new(0,0,0)
+                    espObjects[pl] = espObjects[pl] or {}
+                    espObjects[pl].highlight = h
+                end
+                pcall(makeNameTag, pl)
+            end
+        end
+    end
+    notify(MainFrame, "ESP enabled", 1.2)
+end
+
+local function disableESP()
+    espEnabled = false
+    SETTINGS.esp = false
+    saveSettings(SETTINGS)
+    for _,pl in pairs(Players:GetPlayers()) do
+        if pl.Character then
+            -- remove highlight(s)
+            for _,obj in pairs(pl.Character:GetChildren()) do
+                if obj:IsA("Highlight") and obj.Name == "FattanESPHighlight" then pcall(function() obj:Destroy() end) end
+            end
+            removeNameTag(pl)
+        end
+    end
+    notify(MainFrame, "ESP disabled", 1.2)
+end
+
+espToggle.MouseButton1Click:Connect(function()
+    if espEnabled then disableESP() else enableESP() end
+end)
+
+-- auto-update on join/respawn
+Players.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function()
+        if espEnabled and p ~= LocalPlayer then
+            task.wait(0.12)
+            pcall(function() enableESP() end)
+        end
+    end)
+end)
+Players.PlayerRemoving:Connect(function(p)
+    removeNameTag(p)
+end)
+
+-- ====== Teleport Page ======
+local TP = pages["Teleport"]
+new("UIPadding", {Parent = TP, PaddingTop = UDim.new(0,6), PaddingLeft = UDim.new(0,6)})
+local tpLabel = new("TextLabel", {Parent = TP, Size = UDim2.new(0,280,0,24), Text = "Teleport to player:", BackgroundTransparency = 1, TextColor3 = Color3.new(1,1,1), Font = Enum.Font.GothamSemibold})
+local tpBox = new("TextBox", {Parent = TP, Size = UDim2.new(0,220,0,28), Position = UDim2.new(0,0,0,30), PlaceholderText = "Player name", Text = ""})
+local tpBtn = new("TextButton", {Parent = TP, Size = UDim2.new(0,120,0,30), Position = UDim2.new(0,0,0,66), Text = "Teleport", BackgroundColor3 = Color3.fromRGB(40,110,200), TextColor3 = Color3.new(1,1,1)})
+new("UICorner", {Parent = tpBtn, CornerRadius = UDim.new(0,6)})
+
+-- Create player list (scroll)
+local playerList = new("ScrollingFrame", {Parent = TP, Size = UDim2.new(0,260,0,160), Position = UDim2.new(0,240,0,30), CanvasSize = UDim2.new(0,0,0,0), ScrollBarThickness = 6})
+local playerListLayout = new("UIListLayout", {Parent = playerList, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0,6)})
+
+local selectedPlayer = nil
 local function refreshPlayerList()
-    -- implemented below as separate UI area
-end
-
--- ---------- Player rope (visual pull) ----------
-local activeRopes = {} -- map player -> data
-
-local function cleanRopeForPlayer(target)
-    if not target then return end
-    local d = activeRopes[target]
-    if d then
-        pcall(function() if d.conn then d.conn:Disconnect() end end)
-        pcall(function() if d.beam and d.beam.Parent then d.beam:Destroy() end end)
-        pcall(function() if d.att1 and d.att1.Parent then d.att1:Destroy() end end)
-        pcall(function() if d.att2 and d.att2.Parent then d.att2:Destroy() end end)
-        activeRopes[target] = nil
+    for _,c in pairs(playerList:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+    for _,p in ipairs(Players:GetPlayers()) do
+        local btn = new("TextButton", {Parent = playerList, Size = UDim2.new(1,-12,0,28), Text = p.Name, BackgroundColor3 = Color3.fromRGB(20,70,140), TextColor3 = Color3.new(1,1,1), Font = Enum.Font.GothamSemibold})
+        new("UICorner", {Parent = btn, CornerRadius = UDim.new(0,6)})
+        btn.MouseButton1Click:Connect(function()
+            selectedPlayer = p.Name
+            tpBox.Text = p.Name
+            btn.BackgroundColor3 = Color3.fromRGB(120,150,200)
+            task.delay(0.2, function() if btn and btn.Parent then btn.BackgroundColor3 = Color3.fromRGB(20,70,140) end end)
+        end)
     end
+    playerList.CanvasSize = UDim2.new(0,0,0,playerListLayout.AbsoluteContentSize.Y + 8)
 end
+Players.PlayerAdded:Connect(refreshPlayerList)
+Players.PlayerRemoving:Connect(refreshPlayerList)
+refreshPlayerList()
 
--- ---------- Scan & Delete parts (client-side UI confirm) ----------
-local scanning = false
-local scannedOriginals = {} -- part -> {Color, Material}
-local scannedDetectors = {}
+tpBtn.MouseButton1Click:Connect(function()
+    local name = tpBox.Text
+    if name == "" then notify(MainFrame, "Enter player name", 1.2); return end
+    local target = Players:FindFirstChild(name)
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = safeChar():FindFirstChild("HumanoidRootPart")
+        pcall(function() if hrp then hrp.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(2,0,0) end end)
+        notify(MainFrame, "Teleported to "..name, 1.2)
+    else
+        notify(MainFrame, "Player not found / no character", 1.6)
+    end
+end)
 
--- confirm GUI (small)
-local confirmGui = Instance.new("ScreenGui")
-confirmGui.Name = "MapConfirmGui"
-confirmGui.Parent = playerGui
-confirmGui.Enabled = false
-local confFrame = Instance.new("Frame", confirmGui)
-confFrame.Size = UDim2.new(0,220,0,100)
-confFrame.Position = UDim2.new(0.02,0,0.5,-50)
-confFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-confFrame.BorderSizePixel = 0
-local confCorner = Instance.new("UICorner", confFrame); confCorner.CornerRadius = UDim.new(0,8)
-local confLabel = Instance.new("TextLabel", confFrame)
-confLabel.Size = UDim2.new(1,0,0,48); confLabel.Position = UDim2.new(0,0,0,6)
-confLabel.BackgroundTransparency = 1; confLabel.Text = "Hapus part ini?"; confLabel.Font = Enum.Font.GothamBold; confLabel.TextSize = 16; confLabel.TextColor3 = Color3.new(1,1,1)
-local yesBtn = Instance.new("TextButton", confFrame)
-yesBtn.Size = UDim2.new(0.5, -4, 0, 36); yesBtn.Position = UDim2.new(0, 6, 0, 52)
-yesBtn.Text = "Ya"; yesBtn.Font = Enum.Font.Gotham; yesBtn.TextSize = 14; yesBtn.BackgroundColor3 = Color3.fromRGB(0,150,0); yesBtn.TextColor3 = Color3.new(1,1,1)
-local noBtn = Instance.new("TextButton", confFrame)
-noBtn.Size = UDim2.new(0.5, -4, 0, 36); noBtn.Position = UDim2.new(0.5, 2, 0, 52)
-noBtn.Text = "Tidak"; noBtn.Font = Enum.Font.Gotham; noBtn.TextSize = 14; noBtn.BackgroundColor3 = Color3.fromRGB(150,0,0); noBtn.TextColor3 = Color3.new(1,1,1)
+-- ====== Tools Page ======
+local Tools = pages["Tools"]
+new("UIPadding", {Parent = Tools, PaddingTop = UDim.new(0,6), PaddingLeft = UDim.new(0,6)})
+local toolsLayout = new("UIListLayout", {Parent = Tools, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0,8)})
+
+-- Player selection for rope/freeze etc
+local selectionLabel = new("TextLabel", {Parent = Tools, Text = "Selected Player:", BackgroundTransparency = 1, TextColor3 = Color3.new(1,1,1), Font = Enum.Font.GothamSemibold})
+local selectedText = new("TextLabel", {Parent = Tools, Text = "None", BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(200,200,200)})
+local selChooseFrame = new("Frame", {Parent = Tools, Size = UDim2.new(1,0,0,36), BackgroundTransparency = 1})
+local selChoose = new("TextBox", {Parent = selChooseFrame, Size = UDim2.new(0,220,0,28), PlaceholderText = "Type player name / or click from list"})
+local selRefresh = new("TextButton", {Parent = selChooseFrame, Size = UDim2.new(0,80,0,28), Position = UDim2.new(0,230,0,0), Text = "Refresh"})
+new("UICorner", {Parent = selRefresh, CornerRadius = UDim.new(0,6)})
+selChooseFrame.Parent = Tools
+
+local toolsPlayerList = new("ScrollingFrame", {Parent = Tools, Size = UDim2.new(1,-12,0,120), CanvasSize = UDim2.new(0,0,0,0), ScrollBarThickness = 6})
+local toolsListLayout = new("UIListLayout", {Parent = toolsPlayerList, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0,6)})
+
+local function refreshToolsPlayerList()
+    for _,c in pairs(toolsPlayerList:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            local btn = new("TextButton", {Parent = toolsPlayerList, Size = UDim2.new(1,-12,0,28), Text = p.Name, BackgroundColor3 = Color3.fromRGB(20,70,140), TextColor3 = Color3.new(1,1,1), Font = Enum.Font.GothamSemibold})
+            new("UICorner", {Parent = btn, CornerRadius = UDim.new(0,6)})
+            btn.MouseButton1Click:Connect(function()
+                selChoose.Text = p.Name
+                selectedText.Text = p.Name
+            end)
+        end
+    end
+    toolsPlayerList.CanvasSize = UDim2.new(0,0,0,toolsListLayout.AbsoluteContentSize.Y + 8)
+end
+selRefresh.MouseButton1Click:Connect(refreshToolsPlayerList)
+Players.PlayerAdded:Connect(refreshToolsPlayerList)
+Players.PlayerRemoving:Connect(refreshToolsPlayerList)
+refreshToolsPlayerList()
+
+-- Confirm modal (inside Tools)
+local confirmModal = new("Frame", {Parent = Tools, Size = UDim2.new(0,320,0,120), Position = UDim2.new(0.5,-160,0.5,-60), BackgroundColor3 = Color3.fromRGB(24,24,24), Visible = false})
+new("UICorner", {Parent = confirmModal, CornerRadius = UDim.new(0,8)})
+local confirmLabel = new("TextLabel", {Parent = confirmModal, Size = UDim2.new(1,0,0,50), BackgroundTransparency = 1, Text = "Are you sure?", Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = Color3.new(1,1,1)})
+local confirmYes = new("TextButton", {Parent = confirmModal, Size = UDim2.new(0.5,0,0,46), Position = UDim2.new(0,0,0.6,0), Text = "Yes", BackgroundColor3 = Color3.fromRGB(0,150,0)})
+local confirmNo = new("TextButton", {Parent = confirmModal, Size = UDim2.new(0.5,0,0,46), Position = UDim2.new(0.5,0,0.6,0), Text = "No", BackgroundColor3 = Color3.fromRGB(150,0,0)})
+new("UICorner", {Parent = confirmYes, CornerRadius = UDim.new(0,8)})
+new("UICorner", {Parent = confirmNo, CornerRadius = UDim.new(0,8)})
 
 local pendingPart = nil
-yesBtn.MouseButton1Click:Connect(function()
-    if pendingPart and pendingPart.Parent then
-        pcall(function() pendingPart:Destroy() end)
-    end
-    pendingPart = nil
-    confirmGui.Enabled = false
-end)
-noBtn.MouseButton1Click:Connect(function()
-    if pendingPart and pendingPart.Parent and scannedOriginals[pendingPart] then
-        local d = scannedOriginals[pendingPart]
-        pcall(function() pendingPart.Color = d.Color; pendingPart.Material = d.Material end)
-    end
-    pendingPart = nil
-    confirmGui.Enabled = false
-end)
 
--- scan parts: highlight & add ClickDetector for client-side selection
-local function startScanParts()
+-- Scan Parts: highlight all BaseParts (color + ClickDetector)
+local scanning = false
+local originalParts = {} -- [part] = {color, material}
+local detectors = {}     -- [part] = clickdetector
+
+local function startScan()
     if scanning then return end
     scanning = true
-    for _, v in ipairs(workspace:GetDescendants()) do
+    for _,v in ipairs(Workspace:GetDescendants()) do
         if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-            if not scannedOriginals[v] then
-                scannedOriginals[v] = {Color = v.Color, Material = v.Material}
+            if not originalParts[v] then
+                originalParts[v] = {Color = v.Color, Material = v.Material}
             end
             pcall(function() v.Color = Color3.fromRGB(255,100,100); v.Material = Enum.Material.Neon end)
-            local cd = v:FindFirstChildOfClass("ClickDetector")
-            if not cd then
-                cd = Instance.new("ClickDetector", v)
+            if not v:FindFirstChildOfClass("ClickDetector") then
+                local cd = new("ClickDetector", {Parent = v})
                 cd.MaxActivationDistance = 100
-                scannedDetectors[v] = cd
-                cd.MouseClick:Connect(function(clicker)
-                    if clicker == LocalPlayer and scanning and not pendingPart then
+                detectors[v] = cd
+                cd.MouseClick:Connect(function(player)
+                    if player == LocalPlayer and scanning and not pendingPart then
                         pendingPart = v
                         pcall(function() v.Color = Color3.fromRGB(255,255,0) end)
-                        confirmGui.Enabled = true
+                        confirmLabel.Text = "Delete this part?"
+                        confirmModal.Visible = true
                     end
                 end)
             else
-                scannedDetectors[v] = cd
+                detectors[v] = v:FindFirstChildOfClass("ClickDetector")
             end
         end
     end
+    notify(MainFrame, "Scan started", 1.2)
 end
-local function stopScanParts()
+
+local function stopScan()
     scanning = false
-    for part, orig in pairs(scannedOriginals) do
+    for part,data in pairs(originalParts) do
         if part and part.Parent then
-            pcall(function() part.Color = orig.Color; part.Material = orig.Material end)
+            pcall(function() part.Color = data.Color; part.Material = data.Material end)
         end
-        local cd = scannedDetectors[part]
+        local cd = detectors[part]
         if cd and cd.Parent then pcall(function() cd:Destroy() end) end
+        detectors[part] = nil
     end
-    scannedOriginals = {}
-    scannedDetectors = {}
+    originalParts = {}
     pendingPart = nil
-    confirmGui.Enabled = false
+    confirmModal.Visible = false
+    notify(MainFrame, "Scan stopped & restored", 1.2)
 end
 
--- ---------- WalkFling (invisible block that follows local HRP) ----------
-local flingOn = false
-local flingPart, flingBV, flingConn
-local function startFling()
-    if flingOn then return end
-    flingOn = true
-    local ch = getCharacter()
-    local hrp = ch:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    flingPart = Instance.new("Part")
-    flingPart.Name = "MapFlingBlock"
-    flingPart.Size = Vector3.new(18,18,18)
-    flingPart.Transparency = 1
-    flingPart.Anchored = false
-    flingPart.CanCollide = true
-    flingPart.Massless = true
-    flingPart.Parent = workspace
-
-    local weld = Instance.new("WeldConstraint", flingPart)
-    weld.Part0 = flingPart
-    weld.Part1 = hrp
-
-    flingBV = Instance.new("BodyVelocity", flingPart)
-    flingBV.MaxForce = Vector3.new(1e9,1e9,1e9)
-    flingBV.Velocity = Vector3.zero
-
-    flingConn = RunService.Heartbeat:Connect(function()
-        if not flingOn or not hrp.Parent or not flingPart.Parent then return end
-        local forward = hrp.CFrame.LookVector
-        flingBV.Velocity = forward * 160
-    end)
-end
-local function stopFling()
-    flingOn = false
-    if flingConn then flingConn:Disconnect(); flingConn = nil end
-    pcall(function() if flingBV and flingBV.Parent then flingBV:Destroy() end end)
-    pcall(function() if flingPart and flingPart.Parent then flingPart:Destroy() end end)
-    flingBV, flingPart = nil, nil
-end
-
--- ---------- Run & Jump controls ----------
-local runSpeed = 16
-local jumpPower = 50
-
-local function applyRunJump()
-    pcall(function()
-        local hum = getHumanoid()
-        if hum then
-            hum.WalkSpeed = runSpeed
-            hum.UseJumpPower = true
-            hum.JumpPower = jumpPower
-        end
-    end)
-end
-
--- ---------- ESP / highlight toggle helper connections ----------
-Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function()
-        if espEnabled then
-            pcall(addESPToPlayer, p)
-        end
-    end)
+-- Buttons in Tools
+local scanBtn = new("TextButton", {Parent = Tools, Size = UDim2.new(0,220,0,36), Text = "Scan Parts (Toggle)", BackgroundColor3 = Color3.fromRGB(40,110,200)})
+new("UICorner", {Parent = scanBtn, CornerRadius = UDim.new(0,8)})
+scanBtn.MouseButton1Click:Connect(function()
+    if not scanning then startScan() else stopScan() end
 end)
 
--- ---------- Player list frame (inside GUI) ----------
-local listFrame = Instance.new("Frame", mainFrame)
-listFrame.Size = UDim2.new(1, -20, 0, 110)
-listFrame.Position = UDim2.new(0, 10, 1, -140)
-listFrame.BackgroundColor3 = Color3.fromRGB(12,18,30)
-listFrame.BorderSizePixel = 0
-local listCorner = Instance.new("UICorner", listFrame); listCorner.CornerRadius = UDim.new(0,6)
-local scroll = Instance.new("ScrollingFrame", listFrame)
-scroll.Size = UDim2.new(1, -8, 1, -8)
-scroll.Position = UDim2.new(0, 4, 0, 4)
-scroll.CanvasSize = UDim2.new(0,0,0,0)
-scroll.ScrollBarThickness = 6
-local uiList = Instance.new("UIListLayout", scroll); uiList.SortOrder = Enum.SortOrder.LayoutOrder; uiList.Padding = UDim.new(0,6)
+local deleteAllBtn = new("TextButton", {Parent = Tools, Size = UDim2.new(0,220,0,36), Text = "Delete All Parts", BackgroundColor3 = Color3.fromRGB(160,40,40)})
+new("UICorner", {Parent = deleteAllBtn, CornerRadius = UDim.new(0,8)})
+deleteAllBtn.MouseButton1Click:Connect(function()
+    confirmLabel.Text = "Delete ALL parts? (Except HRP)"
+    pendingPart = "DELETE_ALL"
+    confirmModal.Visible = true
+end)
 
-local function updatePlayerButtons()
-    -- clear
-    for _,child in ipairs(scroll:GetChildren()) do
-        if child:IsA("TextButton") then child:Destroy() end
-    end
-    for i,p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            local b = Instance.new("TextButton")
-            b.Size = UDim2.new(1, -8, 0, 28)
-            b.BackgroundColor3 = Color3.fromRGB(30,60,100)
-            b.Text = p.Name
-            b.Font = Enum.Font.Gotham
-            b.TextSize = 14
-            b.TextColor3 = Color3.new(1,1,1)
-            b.Parent = scroll
-            b.AutoButtonColor = true
-            b.MouseButton1Click:Connect(function()
-                selectedPlayerName = p.Name
-                -- visual feedback
-                b.BackgroundColor3 = Color3.fromRGB(70,110,160)
-                task.delay(0.25, function() if b and b.Parent then b.BackgroundColor3 = Color3.fromRGB(30,60,100) end end)
+local restoreBtn = new("TextButton", {Parent = Tools, Size = UDim2.new(0,220,0,36), Text = "Restore Parts (Stop Scan)", BackgroundColor3 = Color3.fromRGB(80,80,80)})
+new("UICorner", {Parent = restoreBtn, CornerRadius = UDim.new(0,8)})
+restoreBtn.MouseButton1Click:Connect(function() stopScan() end)
+
+local freezeBtn = new("TextButton", {Parent = Tools, Size = UDim2.new(0,220,0,36), Text = "Freeze Selected (10s)", BackgroundColor3 = Color3.fromRGB(40,120,180)})
+new("UICorner", {Parent = freezeBtn, CornerRadius = UDim.new(0,8)})
+freezeBtn.MouseButton1Click:Connect(function()
+    local name = selChoose.Text
+    if name == "" then notify(MainFrame, "Select player first", 1.4); return end
+    local target = Players:FindFirstChild(name)
+    if not target or not target.Character then notify(MainFrame, "Player not valid", 1.4); return end
+    local thrp = target.Character:FindFirstChild("HumanoidRootPart"); local hum = target.Character:FindFirstChildOfClass("Humanoid")
+    if thrp and hum then
+        local ice = new("Part", {Parent = Workspace, Name = "Fattan_Ice_"..target.Name, Size = Vector3.new(6,8,6), Anchored = true, CanCollide = false, Color = Color3.fromRGB(160,220,255), Material = Enum.Material.Ice, CFrame = thrp.CFrame, Transparency = 0.15})
+        local weld = new("WeldConstraint", {Parent = ice}); weld.Part0 = ice; weld.Part1 = thrp
+        pcall(function() hum.WalkSpeed = 0; hum.JumpPower = 0; hum.PlatformStand = true end)
+        notify(MainFrame, "Frozen "..target.Name.." for 10s", 1.6)
+        task.delay(10, function()
+            pcall(function()
+                if ice and ice.Parent then ice:Destroy() end
+                if hum and hum.Parent then hum.WalkSpeed = 16; hum.JumpPower = 50; hum.PlatformStand = false end
             end)
-        end
-    end
-    scroll.CanvasSize = UDim2.new(0,0,0, uiList.AbsoluteContentSize.Y + 8)
-end
-Players.PlayerAdded:Connect(updatePlayerButtons)
-Players.PlayerRemoving:Connect(updatePlayerButtons)
-updatePlayerButtons()
-
--- ======================================================
--- Buttons (the long stacked ones) - order matches screenshot
--- ======================================================
-
--- ADMIN -> open small admin panel (example: fly speed, run/jump quick controls)
-makeLongButton("ADMIN", 0, mainFrame, function()
-    -- create a small popup for admin quick controls (toggleable)
-    local existing = screenGui:FindFirstChild("AdminPopup")
-    if existing then existing:Destroy(); return end
-    local pop = Instance.new("Frame", screenGui)
-    pop.Name = "AdminPopup"
-    pop.Size = UDim2.new(0,260,0,180)
-    pop.Position = UDim2.new(0.5, -130, 0.12, 0)
-    pop.BackgroundColor3 = Color3.fromRGB(18,18,22)
-    local c = Instance.new("UICorner", pop); c.CornerRadius = UDim.new(0,10)
-
-    -- title
-    local t = Instance.new("TextLabel", pop)
-    t.Size = UDim2.new(1, -12, 0, 28); t.Position = UDim2.new(0,6,0,6)
-    t.BackgroundTransparency = 1; t.Text = "Admin Quick"; t.Font = Enum.Font.GothamBold; t.TextSize = 16; t.TextColor3 = Color3.new(1,1,1)
-
-    -- Fly toggle
-    local flyBtn = Instance.new("TextButton", pop)
-    flyBtn.Size = UDim2.new(0.45, -8, 0, 34); flyBtn.Position = UDim2.new(0,6,0,44)
-    flyBtn.Text = flying and "Stop Fly" or "Start Fly"; flyBtn.Font = Enum.Font.Gotham; flyBtn.TextSize = 14; flyBtn.BackgroundColor3 = Color3.fromRGB(40,90,160); flyBtn.TextColor3 = Color3.new(1,1,1)
-    local flyCorner = Instance.new("UICorner", flyBtn); flyCorner.CornerRadius = UDim.new(0,6)
-    flyBtn.MouseButton1Click:Connect(function()
-        if flying then stopFly(); flyBtn.Text = "Start Fly" else startFly(); flyBtn.Text = "Stop Fly" end
-    end)
-
-    -- Apply Run/Jump quick controls
-    local runBox = Instance.new("TextBox", pop)
-    runBox.Size = UDim2.new(0.45, -8, 0, 28); runBox.Position = UDim2.new(0.5, 2, 0, 44)
-    runBox.Text = tostring(runSpeed); runBox.Font = Enum.Font.Gotham; runBox.TextSize = 14; runBox.BackgroundColor3 = Color3.fromRGB(12,30,50); runBox.TextColor3 = Color3.new(1,1,1)
-    local runLbl = Instance.new("TextLabel", pop); runLbl.Size = UDim2.new(0.45, -8, 0, 20); runLbl.Position = UDim2.new(0,6,0,82); runLbl.BackgroundTransparency = 1; runLbl.Text = "Run Speed"; runLbl.Font = Enum.Font.Gotham; runLbl.TextSize = 12; runLbl.TextColor3 = Color3.new(1,1,1)
-
-    local jumpBox = Instance.new("TextBox", pop)
-    jumpBox.Size = UDim2.new(0.45, -8, 0, 28); jumpBox.Position = UDim2.new(0.5, 2, 0, 82)
-    jumpBox.Text = tostring(jumpPower); jumpBox.Font = Enum.Font.Gotham; jumpBox.TextSize = 14; jumpBox.BackgroundColor3 = Color3.fromRGB(12,30,50); jumpBox.TextColor3 = Color3.new(1,1,1)
-    local jumpLbl = Instance.new("TextLabel", pop); jumpLbl.Size = UDim2.new(0.45, -8, 0, 20); jumpLbl.Position = UDim2.new(0,6,0,118); jumpLbl.BackgroundTransparency = 1; jumpLbl.Text = "Jump Power"; jumpLbl.Font = Enum.Font.Gotham; jumpLbl.TextSize = 12; jumpLbl.TextColor3 = Color3.new(1,1,1)
-
-    local applyBtn = Instance.new("TextButton", pop)
-    applyBtn.Size = UDim2.new(1, -12, 0, 30); applyBtn.Position = UDim2.new(0,6,1,-40)
-    applyBtn.Text = "Apply"; applyBtn.Font = Enum.Font.Gotham; applyBtn.TextSize = 14; applyBtn.BackgroundColor3 = Color3.fromRGB(40,120,80); applyBtn.TextColor3 = Color3.new(1,1,1)
-    local applyCorner = Instance.new("UICorner", applyBtn); applyCorner.CornerRadius = UDim.new(0,6)
-
-    applyBtn.MouseButton1Click:Connect(function()
-        local rv = tonumber(runBox.Text) or runSpeed
-        local jv = tonumber(jumpBox.Text) or jumpPower
-        runSpeed = math.clamp(math.floor(rv), 1, 200)
-        jumpPower = math.clamp(math.floor(jv), 1, 200)
-        applyRunJump()
-    end)
-end)
-
--- WARP -> teleport player to a part named WarpPoint1 (edit names as needed)
-makeLongButton("WARP", 1, mainFrame, function()
-    local warpName = "WarpPoint1" -- change sesuai nama part di workspace
-    local warp = workspace:FindFirstChild(warpName)
-    if warp and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = warp.CFrame + Vector3.new(0,3,0)
-    else
-        -- try to find folder "Warps" with first child
-        local warpsFolder = workspace:FindFirstChild("Warps")
-        if warpsFolder and #warpsFolder:GetChildren() > 0 then
-            local first = warpsFolder:GetChildren()[1]
-            if first:IsA("BasePart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = first.CFrame + Vector3.new(0,3,0)
-            end
-        end
-    end
-end)
-
--- FLING -> here repurposed to trigger a map effect: spawn a visible "shock" part in front
-makeLongButton("FLING", 2, mainFrame, function()
-    local ch = getCharacter()
-    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local p = Instance.new("Part", workspace)
-    p.Size = Vector3.new(6,1,6)
-    p.Anchored = true
-    p.CFrame = hrp.CFrame * CFrame.new(0, -3, -10)
-    p.Color = Color3.fromRGB(255,120,40)
-    p.Material = Enum.Material.Neon
-    p.Name = "MapShockEffect"
-    game:GetService("Debris"):AddItem(p, 3)
-end)
-
--- FLING PART -> spawn a decorative part at player's position (map-safe)
-makeLongButton("FLING PART", 3, mainFrame, function()
-    local ch = getCharacter()
-    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local part = Instance.new("Part", workspace)
-    part.Size = Vector3.new(3,3,3)
-    part.Position = hrp.Position + Vector3.new(0, 3, 0)
-    part.Anchored = false
-    part.BrickColor = BrickColor.Random()
-    part.Name = "MapSpawnedPart"
-    part.CanCollide = true
-    part.Material = Enum.Material.SmoothPlastic
-    -- auto remove after 25s
-    game:GetService("Debris"):AddItem(part, 25)
-end)
-
--- SHIFTLOCK -> toggle player's DevEnableMouseLock (client)
-makeLongButton("SHIFTLOCK", 4, mainFrame, function()
-    LocalPlayer.DevEnableMouseLock = not LocalPlayer.DevEnableMouseLock
-    -- feedback
-    local cur = LocalPlayer.DevEnableMouseLock and "ON" or "OFF"
-    -- small toast
-    local t = Instance.new("TextLabel", screenGui)
-    t.Size = UDim2.new(0,160,0,28)
-    t.Position = UDim2.new(0.5, -80, 0.05, 0)
-    t.BackgroundColor3 = Color3.fromRGB(20,20,30)
-    t.TextColor3 = Color3.new(1,1,1)
-    t.Text = "ShiftLock: "..cur
-    t.Font = Enum.Font.GothamBold; t.TextSize = 14
-    local tc = Instance.new("UICorner", t); tc.CornerRadius = UDim.new(0,6)
-    task.delay(1.6, function() pcall(function() t:Destroy() end) end)
-end)
-
--- ADDITIONAL control buttons below (scan, delete, snap actions)
-makeLongButton("Scan Parts (Toggle)", 5, mainFrame, function()
-    if not scanning then startScanParts() else stopScanParts() end
-end)
-
-makeLongButton("Delete All Map Parts", 6, mainFrame, function()
-    -- WARNING: client-side destroy only in workspace; use responsibly
-    for _,v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-            pcall(function() v:Destroy() end)
-        end
-    end
-    scannedOriginals = {}
-end)
-
-makeLongButton("WalkFling (Toggle)", 7, mainFrame, function()
-    if flingOn then stopFling() else startFling() end
-end)
-
--- Small toggle for ESP (placed near bottom-left)
-local espToggle = Instance.new("TextButton", mainFrame)
-espToggle.Size = UDim2.new(0.44, -8, 0, 28)
-espToggle.Position = UDim2.new(0, 12, 1, -42)
-espToggle.Text = "ESP: Off"
-espToggle.Font = Enum.Font.Gotham
-espToggle.TextSize = 13
-espToggle.BackgroundColor3 = Color3.fromRGB(45,45,60)
-espToggle.TextColor3 = Color3.new(1,1,1)
-local espCorner = Instance.new("UICorner", espToggle); espCorner.CornerRadius = UDim.new(0,6)
-espToggle.MouseButton1Click:Connect(function()
-    espEnabled = not espEnabled
-    espToggle.Text = espEnabled and "ESP: On" or "ESP: Off"
-    for _,p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            if espEnabled then
-                pcall(addESPToPlayer,p)
-                if p.Character and not p.Character:FindFirstChild("MapHighlight") then
-                    local hl = Instance.new("Highlight", p.Character)
-                    hl.Name = "MapHighlight"
-                    hl.FillTransparency = 0.6
-                    hl.FillColor = Color3.fromRGB(0,255,255)
-                    hl.OutlineTransparency = 0.7
-                end
-            else
-                pcall(removeESPFromPlayer,p)
-            end
-        end
-    end
-end)
-
--- Teleport to selected player (uses player list selection)
-makeLongButton("Teleport to Selected", 8, mainFrame, function()
-    if not selectedPlayerName then return end
-    local t = Players:FindFirstChild(selectedPlayerName)
-    if not t or not t.Character or not t.Character:FindFirstChild("HumanoidRootPart") then return end
-    local mych = getCharacter()
-    if mych and mych:FindFirstChild("HumanoidRootPart") then
-        mych.HumanoidRootPart.CFrame = t.Character.HumanoidRootPart.CFrame + Vector3.new(2,0,0)
-    end
-end)
-
--- Freeze selected (10s) - affects humanoid properties client-sided for other player's character only if accessible
-makeLongButton("Freeze Selected (10s)", 9, mainFrame, function()
-    if not selectedPlayerName then return end
-    local target = Players:FindFirstChild(selectedPlayerName)
-    if not target or not target.Character then return end
-    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
-    local hum = target.Character:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then return end
-
-    local ice = Instance.new("Part", workspace)
-    ice.Name = "MapFreeze_"..target.Name
-    ice.Size = Vector3.new(6,8,6)
-    ice.Anchored = true
-    ice.CanCollide = false
-    ice.Color = Color3.fromRGB(160,220,255)
-    ice.Material = Enum.Material.Ice
-    ice.CFrame = hrp.CFrame
-    ice.Transparency = 0.15
-
-    local weld = Instance.new("WeldConstraint", ice)
-    weld.Part0 = ice; weld.Part1 = hrp
-
-    pcall(function()
-        hum.WalkSpeed = 0
-        hum.JumpPower = 0
-        hum.PlatformStand = true
-    end)
-
-    task.delay(10, function()
-        pcall(function()
-            if ice and ice.Parent then ice:Destroy() end
-            if hum and hum.Parent then
-                hum.WalkSpeed = 16
-                hum.JumpPower = 50
-                hum.PlatformStand = false
-            end
         end)
-    end)
+    end
 end)
 
--- Rope toggle (pull visual) for selected
-makeLongButton("Tarik Tali (3D) - Toggle", 10, mainFrame, function()
-    if not selectedPlayerName then return end
-    local targetPlayer = Players:FindFirstChild(selectedPlayerName)
-    if not targetPlayer then return end
-    if activeRopes[targetPlayer] then
-        cleanRopeForPlayer(targetPlayer); return
+-- Rope: visual pull (client-side)
+local activeRopes = {} -- [player] = {att1, att2, beam, conn}
+local ropeBtn = new("TextButton", {Parent = Tools, Size = UDim2.new(0,220,0,36), Text = "Tarik Tali (3D) - Toggle", BackgroundColor3 = Color3.fromRGB(40,120,60)})
+new("UICorner", {Parent = ropeBtn, CornerRadius = UDim.new(0,8)})
+ropeBtn.MouseButton1Click:Connect(function()
+    local name = selChoose.Text
+    if name == "" then notify(MainFrame, "Select player first", 1.4); return end
+    local target = Players:FindFirstChild(name)
+    if not target or not target.Character then notify(MainFrame, "Player not valid", 1.4); return end
+    if activeRopes[target] then
+        -- cleanup
+        pcall(function()
+            if activeRopes[target].conn then activeRopes[target].conn:Disconnect() end
+            if activeRopes[target].beam and activeRopes[target].beam.Parent then activeRopes[target].beam:Destroy() end
+            if activeRopes[target].att1 and activeRopes[target].att1.Parent then activeRopes[target].att1:Destroy() end
+            if activeRopes[target].att2 and activeRopes[target].att2.Parent then activeRopes[target].att2:Destroy() end
+        end)
+        activeRopes[target] = nil
+        notify(MainFrame, "Rope removed for "..name, 1.4)
+        return
     end
-    local tchar = targetPlayer.Character
-    local mychar = getCharacter()
-    if not tchar or not mychar then return end
-    local thrp = tchar:FindFirstChild("HumanoidRootPart")
+    local mychar = safeChar()
     local myhrp = mychar:FindFirstChild("HumanoidRootPart")
-    if not thrp or not myhrp then return end
-    if thrp:FindFirstChild("MapElasticRope_Att2") then return end
-
-    local att1 = Instance.new("Attachment", myhrp); att1.Name = "MapElasticRope_Att1"
-    local att2 = Instance.new("Attachment", thrp); att2.Name = "MapElasticRope_Att2"
-    local ropeBeam = Instance.new("Beam", myhrp)
-    ropeBeam.Name = "MapElasticRope_Beam"
-    ropeBeam.Attachment0 = att1; ropeBeam.Attachment1 = att2
-    ropeBeam.FaceCamera = false; ropeBeam.Width0 = 0.18; ropeBeam.Width1 = 0.18
-    ropeBeam.Segments = 15; ropeBeam.Transparency = NumberSequence.new(0)
-    ropeBeam.Color = ColorSequence.new(Color3.fromRGB(139,69,19))
-    ropeBeam.Parent = myhrp
-
-    ropeBeam.CurveSize0 = math.clamp((myhrp.Position - thrp.Position).Magnitude / 30, 0, 1.5)
-    ropeBeam.CurveSize1 = ropeBeam.CurveSize0 * 0.6
-
-    local minDistance = 6
+    local thrp = target.Character:FindFirstChild("HumanoidRootPart")
+    if not myhrp or not thrp then notify(MainFrame, "HRP missing", 1.4); return end
+    local att1 = new("Attachment", myhrp); att1.Name = "FattanElasticRope_Att1"
+    local att2 = new("Attachment", thrp); att2.Name = "FattanElasticRope_Att2"
+    local beam = new("Beam", {Parent = myhrp, Name = "FattanElasticRope_Beam", Attachment0 = att1, Attachment1 = att2, Width0 = 0.18, Width1 = 0.18, Segments = 12, FaceCamera = false})
+    beam.Color = ColorSequence.new(Color3.fromRGB(139,69,19))
+    beam.TextureMode = Enum.TextureMode.Stretch
+    beam.CurveSize0 = clamp((myhrp.Position - thrp.Position).Magnitude / 30, 0, 1.5)
+    beam.CurveSize1 = beam.CurveSize0 * 0.6
+    local pulling = true
     local conn
-    conn = RunService.RenderStepped:Connect(function()
-        if not att1.Parent or not att2.Parent or not ropeBeam.Parent then
+    conn = RunService.RenderStepped:Connect(function(dt)
+        if not pulling then return end
+        if not att1.Parent or not att2.Parent then
             if conn then conn:Disconnect(); conn = nil end
             return
         end
         local dist = (att1.WorldPosition - att2.WorldPosition).Magnitude
-        local curve = math.clamp(1.5 - (dist/60), 0, 1.5)
-        ropeBeam.CurveSize0 = curve; ropeBeam.CurveSize1 = curve * 0.6
+        local curve = clamp(1.5 - (dist/60), 0, 1.5)
+        beam.CurveSize0 = curve
+        beam.CurveSize1 = curve * 0.6
         if thrp.Parent and myhrp.Parent then
             local dir = myhrp.Position - thrp.Position
             local d = dir.Magnitude
-            if d > minDistance then
-                local targetPos = myhrp.Position - dir.Unit * minDistance
-                local newCFrame = thrp.CFrame:Lerp(CFrame.new(targetPos, targetPos + thrp.CFrame.LookVector), 0.15)
-                thrp.CFrame = newCFrame
+            local minDist = 6
+            if d > minDist then
+                local targetPos = myhrp.Position - dir.Unit * minDist
+                thrp.CFrame = thrp.CFrame:Lerp(CFrame.new(targetPos, targetPos + thrp.CFrame.LookVector), 0.15)
             end
         end
     end)
-
-    activeRopes[targetPlayer] = {att1 = att1, att2 = att2, beam = ropeBeam, conn = conn}
-    -- cleanup on leave
-    local leaveCon
-    leaveCon = targetPlayer.CharacterRemoving:Connect(function()
-        cleanRopeForPlayer(targetPlayer)
-        if leaveCon then leaveCon:Disconnect(); leaveCon = nil end
-    end)
+    activeRopes[target] = {att1 = att1, att2 = att2, beam = beam, conn = conn}
+    notify(MainFrame, "Rope active to "..name, 1.4)
 end)
 
--- STOP ALL ROPES button
-makeLongButton("Stop All Ropes", 11, mainFrame, function()
-    for p,_ in pairs(activeRopes) do cleanRopeForPlayer(p) end
+-- Stop all ropes
+local stopRopesBtn = new("TextButton", {Parent = Tools, Size = UDim2.new(0,220,0,36), Text = "Stop All Ropes", BackgroundColor3 = Color3.fromRGB(120,80,160)})
+new("UICorner", {Parent = stopRopesBtn, CornerRadius = UDim.new(0,8)})
+stopRopesBtn.MouseButton1Click:Connect(function()
+    for pl,data in pairs(activeRopes) do
+        pcall(function()
+            if data.conn then data.conn:Disconnect() end
+            if data.beam and data.beam.Parent then data.beam:Destroy() end
+            if data.att1 and data.att1.Parent then data.att1:Destroy() end
+            if data.att2 and data.att2.Parent then data.att2:Destroy() end
+        end)
+        activeRopes[pl] = nil
+    end
+    notify(MainFrame, "All ropes stopped", 1.2)
 end)
 
--- Toggle Fly Speed quick adjust (small UI)
-local flySpeedUp = Instance.new("TextButton", mainFrame)
-flySpeedUp.Size = UDim2.new(0.28, -8, 0, 28); flySpeedUp.Position = UDim2.new(0.02, 8, 1, -80)
-flySpeedUp.Text = "F+"
-flySpeedUp.Font = Enum.Font.Gotham; flySpeedUp.TextSize = 14; flySpeedUp.BackgroundColor3 = Color3.fromRGB(40,80,140)
-flySpeedUp.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", flySpeedUp).CornerRadius = UDim.new(0,6)
-flySpeedUp.MouseButton1Click:Connect(function() flySpeed = math.min(1000, flySpeed + 10) end)
-
-local flySpeedDown = Instance.new("TextButton", mainFrame)
-flySpeedDown.Size = UDim2.new(0.28, -8, 0, 28); flySpeedDown.Position = UDim2.new(0.34, 0, 1, -80)
-flySpeedDown.Text = "F-"
-flySpeedDown.Font = Enum.Font.Gotham; flySpeedDown.TextSize = 14; flySpeedDown.BackgroundColor3 = Color3.fromRGB(140,40,40)
-flySpeedDown.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", flySpeedDown).CornerRadius = UDim.new(0,6)
-flySpeedDown.MouseButton1Click:Connect(function() flySpeed = math.max(1, flySpeed - 10) end)
-
-local flyToggleBtn = Instance.new("TextButton", mainFrame)
-flyToggleBtn.Size = UDim2.new(0.36, -8, 0, 28); flyToggleBtn.Position = UDim2.new(0.66, 0, 1, -80)
-flyToggleBtn.Text = "Fly"
-flyToggleBtn.Font = Enum.Font.Gotham; flyToggleBtn.TextSize = 14; flyToggleBtn.BackgroundColor3 = Color3.fromRGB(50,120,80)
-Instance.new("UICorner", flyToggleBtn).CornerRadius = UDim.new(0,6)
-flyToggleBtn.MouseButton1Click:Connect(function()
-    if flying then stopFly(); flyToggleBtn.Text = "Fly" else startFly(); flyToggleBtn.Text = "Stop" end
+-- WalkFling (invisible block attached to HRP)
+local walkFlingOn = false
+local walkFlingConn, walkFlingPart, walkFlingBV = nil, nil, nil
+local walkFlingBtn = new("TextButton", {Parent = Tools, Size = UDim2.new(0,220,0,36), Text = "WalkFling (Toggle)", BackgroundColor3 = Color3.fromRGB(200,140,20)})
+new("UICorner", {Parent = walkFlingBtn, CornerRadius = UDim.new(0,8)})
+walkFlingBtn.MouseButton1Click:Connect(function()
+    if walkFlingOn then
+        walkFlingOn = false
+        if walkFlingConn then walkFlingConn:Disconnect(); walkFlingConn=nil end
+        if walkFlingBV and walkFlingBV.Parent then walkFlingBV:Destroy() end
+        if walkFlingPart and walkFlingPart.Parent then walkFlingPart:Destroy() end
+        notify(MainFrame, "WalkFling stopped", 1.2)
+    else
+        walkFlingOn = true
+        local ch = safeChar(); local hrp = ch:FindFirstChild("HumanoidRootPart")
+        if not hrp then notify(MainFrame, "No HRP", 1.2); return end
+        walkFlingPart = new("Part", {Parent = Workspace, Name = "FattanFlingBlock", Size = Vector3.new(20,20,20), Transparency = 1, Anchored = false, CanCollide = true, Massless = true})
+        local weld = new("WeldConstraint", {Parent = walkFlingPart}); weld.Part0 = walkFlingPart; weld.Part1 = hrp
+        walkFlingBV = new("BodyVelocity", {Parent = walkFlingPart, MaxForce = Vector3.new(1e9,1e9,1e9), Velocity = Vector3.zero})
+        walkFlingConn = RunService.Heartbeat:Connect(function()
+            if not walkFlingOn or not hrp.Parent or not walkFlingPart.Parent then return end
+            local forward = hrp.CFrame.LookVector
+            walkFlingBV.Velocity = forward * SETTINGS.flingPower
+        end)
+        notify(MainFrame, "WalkFling started", 1.2)
+    end
 end)
 
--- Ensure apply run/jump on respawn
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.7)
-    applyRunJump()
-    -- re-apply fling if needed
-    if flingOn then task.wait(0.6); pcall(startFling) end
+-- Delete selected part (confirm modal usage)
+confirmYes.MouseButton1Click:Connect(function()
+    if pendingPart == "DELETE_ALL" then
+        -- delete all baseparts except HRP
+        for _,v in ipairs(Workspace:GetDescendants()) do
+            if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+                pcall(function() v:Destroy() end)
+            end
+        end
+        notify(MainFrame, "Deleted all parts", 1.2)
+    elseif typeof(pendingPart) == "Instance" and pendingPart.Parent then
+        pcall(function() pendingPart:Destroy() end)
+        notify(MainFrame, "Part deleted", 1.2)
+    end
+    pendingPart = nil
+    confirmModal.Visible = false
+end)
+confirmNo.MouseButton1Click:Connect(function()
+    if typeof(pendingPart) == "Instance" and pendingPart.Parent and pendingPart._fattan_original then
+        local d = pendingPart._fattan_original
+        pcall(function() pendingPart.Color = d.Color; pendingPart.Material = d.Material end)
+        pendingPart._fattan_original = nil
+    end
+    pendingPart = nil
+    confirmModal.Visible = false
 end)
 
--- cleanup on leaving
-Players.PlayerRemoving:Connect(function(p)
-    activeRopes[p] = nil
+-- Restore parts button behavior (stopScan does restore)
+-- handled earlier in stopScan()
+
+-- ===== Settings Page =====
+local SettingsPage = pages["Settings"]
+new("UIPadding", {Parent = SettingsPage, PaddingTop = UDim.new(0,6), PaddingLeft = UDim.new(0,6)})
+local settingsLabel = new("TextLabel", {Parent = SettingsPage, Text = "Settings", BackgroundTransparency = 1, TextColor3 = Color3.new(1,1,1), Font = Enum.Font.GothamBold, TextSize = 16})
+local saveBtn = new("TextButton", {Parent = SettingsPage, Text = "Save Settings Now", Size = UDim2.new(0,220,0,36), BackgroundColor3 = Color3.fromRGB(60,120,200)})
+new("UICorner", {Parent = saveBtn, CornerRadius = UDim.new(0,8)})
+saveBtn.MouseButton1Click:Connect(function()
+    saveSettings(SETTINGS)
+    notify(MainFrame, "Settings saved", 1.2)
 end)
 
--- End of script: optional helpful hint
-local hint = Instance.new("TextLabel", screenGui)
-hint.Size = UDim2.new(0, 260, 0, 24)
-hint.Position = UDim2.new(0.5, -130, 0.01, 0)
-hint.BackgroundTransparency = 1
-hint.Text = "Map Control GUI - for your map only"
-hint.TextColor3 = Color3.fromRGB(200,200,200)
-hint.Font = Enum.Font.Gotham; hint.TextSize = 12
-task.delay(2.4, function() if hint and hint.Parent then hint:Destroy() end end)
+-- ===== Misc helpers and cleanup on unload =====
+-- Provide function to completely cleanup GUI and active objects
+local function cleanupAll()
+    -- disable fly
+    if flyConn then flyConn:Disconnect(); flyConn=nil end
+    if flyBV then pcall(function() flyBV:Destroy() end) end
+    if flyBG then pcall(function() flyBG:Destroy() end) end
+    -- disable walkfling
+    if walkFlingConn then walkFlingConn:Disconnect(); walkFlingConn=nil end
+    if walkFlingPart and walkFlingPart.Parent then walkFlingPart:Destroy() end
+    -- stop ropes
+    for pl,data in pairs(activeRopes) do
+        pcall(function()
+            if data.conn then data.conn:Disconnect() end
+            if data.beam and data.beam.Parent then data.beam:Destroy() end
+            if data.att1 and data.att1.Parent then data.att1:Destroy() end
+            if data.att2 and data.att2.Parent then data.att2:Destroy() end
+        end)
+        activeRopes[pl] = nil
+    end
+    -- stop scanning
+    if scanning then stopScan() end
+    -- remove ESP
+    disableESP()
+    -- destroy GUI
+    pcall(function() if ScreenGui and ScreenGui.Parent then ScreenGui:Destroy() end end)
+end
 
--- Finished
-print("MapControlGUI_v2 loaded")
+-- Close button should call cleanup
+CloseBtn.MouseButton1Click:Connect(cleanupAll)
+
+-- Safety: cleanup when player leaves / script disabled
+LocalPlayer.AncestryChanged:Connect(function(_, parent)
+    if not parent then cleanupAll() end
+end)
+
+-- ===== Finish init =====
+notify(MainFrame, "FattanHub ready", 1.6)
+
+-- End of script
