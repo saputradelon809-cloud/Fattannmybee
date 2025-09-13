@@ -1,7 +1,6 @@
--- 🏔️ AUTO SUMMIT PRO V15 - All-in-One
--- ✅ Noclip / Anti AFK / Auto Play / Manual CP / Saved CP + Tombol Manual Save
+-- 🏔️ AUTO SUMMIT PRO V16 - Summit Kedetect 100%
+-- ✅ Semua fitur + Saved CP + Summit sistem kedetect
 
--- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -59,27 +58,22 @@ local function getGameCheckpoints()
     return cps
 end
 
--- Tween teleport
-local function tweenTo(targetCFrame,duration)
-    if not root or not root.Parent then
-        character = player.Character or player.CharacterAdded:Wait()
-        root = character:WaitForChild("HumanoidRootPart")
+-- Tween atau teleport singkat
+local function moveToCP(cp)
+    if root and cp then
+        root.CFrame = cp.CFrame + Vector3.new(0,3,0)
+        task.wait(0.2) -- beri waktu physics register
     end
-    local tween = TweenService:Create(root,TweenInfo.new(duration,Enum.EasingStyle.Linear),{CFrame=targetCFrame})
-    tween:Play()
-    tween.Completed:Wait()
 end
 
 -- Saved CP
 local savedCPs = {}
-
 local savedFrame = Instance.new("ScrollingFrame")
 savedFrame.Size = UDim2.new(1,-10,0,150)
 savedFrame.Position = UDim2.new(0,5,0,200)
 savedFrame.BackgroundTransparency = 0.5
 savedFrame.CanvasSize = UDim2.new(0,0,2,0)
 savedFrame.ScrollBarThickness = 6
-savedFrame.Parent = nil -- nanti parent ke frame GUI
 
 local function addSavedCPButton(cp)
     local btn = Instance.new("TextButton")
@@ -93,10 +87,11 @@ local function addSavedCPButton(cp)
     btn.Parent = savedFrame
 
     btn.MouseButton1Click:Connect(function()
-        tweenTo(cp.CFrame+Vector3.new(0,3,0),2)
-        firetouchinterest(root,cp,0)
-        task.wait(0.2)
-        firetouchinterest(root,cp,1)
+        moveToCP(cp)
+        firetouchinterest(root, cp, 0)
+        task.wait(0.3)
+        firetouchinterest(root, cp, 1)
+        task.wait(0.5) -- beri waktu game register
     end)
 end
 
@@ -107,14 +102,14 @@ local function saveCP(cp)
     end
 end
 
--- Teleport + trigger CP
+-- Teleport + touch + save
 local function touchPart(cp)
-    if root and cp then
-        firetouchinterest(root,cp,0)
-        task.wait(0.2)
-        firetouchinterest(root,cp,1)
-        saveCP(cp)
-    end
+    moveToCP(cp)
+    firetouchinterest(root, cp, 0)
+    task.wait(0.3)
+    firetouchinterest(root, cp, 1)
+    task.wait(0.5)
+    saveCP(cp)
 end
 
 -- Auto Play semua CP
@@ -123,7 +118,6 @@ local function playAllCP()
     local cps = getGameCheckpoints()
     for _,cp in ipairs(cps) do
         if not status.autoPlay then break end
-        tweenTo(cp.CFrame+Vector3.new(0,3,0),2)
         touchPart(cp)
         task.wait(4)
     end
@@ -140,14 +134,13 @@ local function playNextCP()
     local currentPos = root.Position
     local nextCP = nil
     for _,cp in ipairs(cps) do
-        local dist = (cp.Position - currentPos).Magnitude
-        if dist > 10 then
-            nextCP = cp
+        local dist = (cp.Position-currentPos).Magnitude
+        if dist>10 then
+            nextCP=cp
             break
         end
     end
     if nextCP then
-        tweenTo(nextCP.CFrame+Vector3.new(0,3,0),2)
         touchPart(nextCP)
         task.wait(4)
     else
@@ -157,7 +150,6 @@ end
 
 -- Manual CP
 local function playOneCP(cp)
-    tweenTo(cp.CFrame+Vector3.new(0,3,0),2)
     touchPart(cp)
     task.wait(4)
 end
@@ -169,7 +161,7 @@ screenGui.Name = "AutoSummitGui"
 screenGui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,280,0,420)
+frame.Size = UDim2.new(0,280,0,440)
 frame.Position = UDim2.new(0.35,0,0.25,0)
 frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 frame.Active = true
@@ -179,7 +171,7 @@ frame.Parent = screenGui
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1,0,0,30)
 title.BackgroundColor3 = Color3.fromRGB(50,50,50)
-title.Text = "🏔️ Auto Summit PRO V15"
+title.Text = "🏔️ Auto Summit PRO V16"
 title.TextColor3 = Color3.fromRGB(255,255,255)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 16
@@ -233,7 +225,7 @@ local function makeButton(text,order,callback,parent)
 end
 
 -- ==================================================
--- Tambah tombol utama
+-- Tombol utama
 makeToggle("🚪 Noclip",1,status,"noclip")
 makeToggle("🕹️ Anti AFK",2,status,"antiAfk")
 makeButton("▶️ Auto Play Semua CP",3,playAllCP)
