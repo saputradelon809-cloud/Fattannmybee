@@ -3,25 +3,28 @@ local UserInputService = game:GetService("UserInputService")
 
 -- Pastikan HumanoidRootPart siap
 local hrp
-if player.Character then
-    hrp = player.Character:WaitForChild("HumanoidRootPart")
-else
-    player.CharacterAdded:Wait()
-    hrp = player.Character:WaitForChild("HumanoidRootPart")
+local function getHRP()
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        hrp = player.Character.HumanoidRootPart
+    else
+        player.CharacterAdded:Wait()
+        hrp = player.Character:WaitForChild("HumanoidRootPart")
+    end
 end
+getHRP()
 
 local savedPositions = {}
 local cpNames = {}
 
--- ScreenGui di PlayerGui
+-- ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.Name = "CoordinateSaverGUI"
-gui.Parent = player:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
 
 -- Frame utama
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 360, 0, 500)
+frame.Size = UDim2.new(0, 360, 0, 600)
 frame.Position = UDim2.new(0, 20, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 frame.Parent = gui
@@ -76,10 +79,28 @@ tpBtn.BackgroundColor3 = Color3.fromRGB(60,60,150)
 tpBtn.TextColor3 = Color3.fromRGB(255,255,255)
 tpBtn.Parent = frame
 
+-- Tombol Auto Loop Teleport
+local loopBtn = Instance.new("TextButton")
+loopBtn.Size = UDim2.new(1,-20,0,40)
+loopBtn.Position = UDim2.new(0,10,0,240)
+loopBtn.Text = "Auto Loop Teleport"
+loopBtn.BackgroundColor3 = Color3.fromRGB(80,80,200)
+loopBtn.TextColor3 = Color3.fromRGB(255,255,255)
+loopBtn.Parent = frame
+
+-- Tombol Clear All
+local clearBtn = Instance.new("TextButton")
+clearBtn.Size = UDim2.new(1,-20,0,40)
+clearBtn.Position = UDim2.new(0,10,0,290)
+clearBtn.Text = "Clear All"
+clearBtn.BackgroundColor3 = Color3.fromRGB(200,60,60)
+clearBtn.TextColor3 = Color3.fromRGB(255,255,255)
+clearBtn.Parent = frame
+
 -- Delay teleport
 local delayBox = Instance.new("TextBox")
 delayBox.Size = UDim2.new(1,-20,0,30)
-delayBox.Position = UDim2.new(0,10,0,240)
+delayBox.Position = UDim2.new(0,10,0,340)
 delayBox.PlaceholderText = "Delay teleport (detik)"
 delayBox.Text = "0.5"
 delayBox.TextColor3 = Color3.fromRGB(255,255,255)
@@ -88,17 +109,17 @@ delayBox.Parent = frame
 
 -- ScrollFrame koordinat
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1,-20,0,200)
-scrollFrame.Position = UDim2.new(0,10,0,280)
+scrollFrame.Size = UDim2.new(1,-20,0,220)
+scrollFrame.Position = UDim2.new(0,10,0,380)
 scrollFrame.BackgroundColor3 = Color3.fromRGB(50,50,50)
 scrollFrame.ScrollBarThickness = 6
 scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 scrollFrame.Parent = frame
 
 local uiListLayout = Instance.new("UIListLayout")
-uiListLayout.Parent = scrollFrame
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 uiListLayout.Padding = UDim.new(0,5)
+uiListLayout.Parent = scrollFrame
 
 -- Fungsi update ScrollFrame
 local function updateScrollFrame()
@@ -118,12 +139,12 @@ local function updateScrollFrame()
         label.BackgroundTransparency = 1
         label.TextColor3 = Color3.fromRGB(255,255,0)
         label.TextScaled = true
+        label.TextXAlignment = Enum.TextXAlignment.Left
         label.Text = cpName .. ": Vector3.new("..pos.X..","..pos.Y..","..pos.Z..")"
         label.Parent = container
 
-        -- Tombol Delete
         local delBtn = Instance.new("TextButton")
-        delBtn.Size = UDim2.new(0.15,0,1,0)
+        delBtn.Size = UDim2.new(0.3,0,1,0)
         delBtn.Position = UDim2.new(0.7,0,0,0)
         delBtn.Text = "Del"
         delBtn.TextScaled = true
@@ -136,38 +157,34 @@ local function updateScrollFrame()
             table.remove(cpNames,i)
             updateScrollFrame()
         end)
-
-        -- Tombol Edit
-        local editBtn = Instance.new("TextButton")
-        editBtn.Size = UDim2.new(0.15,0,1,0)
-        editBtn.Position = UDim2.new(0.85,0,0,0)
-        editBtn.Text = "Edit"
-        editBtn.TextScaled = true
-        editBtn.BackgroundColor3 = Color3.fromRGB(50,150,50)
-        editBtn.TextColor3 = Color3.fromRGB(255,255,255)
-        editBtn.Parent = container
-
-        editBtn.MouseButton1Click:Connect(function()
-            local newName = cpName.."_edited"
-            cpNames[i] = newName
-            updateScrollFrame()
-        end)
     end
+end
+
+-- Notifikasi sederhana
+local function notify(msg)
+    local notif = Instance.new("TextLabel")
+    notif.Size = UDim2.new(1,0,0,30)
+    notif.Position = UDim2.new(0,0,0,0)
+    notif.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    notif.TextColor3 = Color3.fromRGB(255,255,0)
+    notif.Text = msg
+    notif.TextScaled = true
+    notif.Parent = frame
+    game.Debris:AddItem(notif,1.5)
 end
 
 -- Tombol Save Posisi
 saveBtn.MouseButton1Click:Connect(function()
+    getHRP()
     if not hrp then return end
     local pos = hrp.Position
     table.insert(savedPositions,pos)
-
     local inputName = nameBox.Text
-    if inputName == "" then
-        inputName = "CP"..#savedPositions
-    end
+    if inputName == "" then inputName = "CP"..#savedPositions end
     table.insert(cpNames,inputName)
     nameBox.Text = ""
     updateScrollFrame()
+    notify("Koordinat "..inputName.." tersimpan!")
 end)
 
 -- Tombol Cetak Kode
@@ -177,15 +194,43 @@ printBtn.MouseButton1Click:Connect(function()
         local cpName = cpNames[i] or ("CP"..i)
         print(cpName.." = Vector3.new("..pos.X..","..pos.Y..","..pos.Z..")")
     end
+    notify("Kode koordinat dicetak di output")
 end)
 
 -- Tombol Auto Teleport
 tpBtn.MouseButton1Click:Connect(function()
+    getHRP()
+    if not hrp then return end
     local delayTime = tonumber(delayBox.Text) or 0.5
     for i,pos in ipairs(savedPositions) do
         hrp.CFrame = CFrame.new(pos)
         wait(delayTime)
     end
+    notify("Selesai Auto Teleport")
+end)
+
+-- Tombol Auto Loop Teleport
+loopBtn.MouseButton1Click:Connect(function()
+    getHRP()
+    if not hrp then return end
+    local delayTime = tonumber(delayBox.Text) or 0.5
+    spawn(function()
+        while #savedPositions>0 do
+            for i,pos in ipairs(savedPositions) do
+                hrp.CFrame = CFrame.new(pos)
+                wait(delayTime)
+            end
+        end
+    end)
+    notify("Auto Loop Teleport dimulai")
+end)
+
+-- Tombol Clear All
+clearBtn.MouseButton1Click:Connect(function()
+    savedPositions = {}
+    cpNames = {}
+    updateScrollFrame()
+    notify("Semua koordinat dihapus")
 end)
 
 -- Drag GUI mobile
