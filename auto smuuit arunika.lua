@@ -1,6 +1,6 @@
---// Arunika CP Tool (Final v5)
+--// Arunika CP Tool (Final v7)
 -- GUI + Auto TP Cepat + Auto Natural
--- Auto Respawn + Auto Rejoin + Anti-Kursi Natural + Stop Button
+-- Auto Respawn + Auto Rejoin + Anti-Kursi + Anti-Player + Stop Button
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -98,33 +98,59 @@ local function safePosAround(cpPos, radius)
     return cpPos + Vector3.new(radius,0,0) -- fallback
 end
 
--- Natural Process
+-- Cek & hindari player lain
+local function avoidPlayers()
+    for _,plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local otherHRP = plr.Character.HumanoidRootPart
+            if (otherHRP.Position - hrp.Position).Magnitude < 6 then
+                -- Naik ke atas untuk menghindar
+                tweenTo(hrp.Position + Vector3.new(0,15,0), 0.8)
+                task.wait(0.5)
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- Natural Process (terbang antar CP + hindari kursi + player)
 local function processNatural(pos)
     if not hrp then return end
+    local startPos = hrp.Position
 
-    -- 1. Fly di atas CP
-    tweenTo(pos + Vector3.new(0, 15, 0), 1.5)
-    task.wait(math.random(1,2))
-
-    -- 2. Turun perlahan
-    tweenTo(pos + Vector3.new(0, 3, 0), 1.2)
+    -- 1. Naik ke atas
+    tweenTo(startPos + Vector3.new(0,30,0), 1.5)
     task.wait(0.5)
+    avoidPlayers()
 
-    -- 3. Muter di sekitar CP (hindari kursi)
+    -- 2. Terbang horizontal di atas CP
+    tweenTo(Vector3.new(pos.X, startPos.Y+30, pos.Z), 2)
+    task.wait(0.5)
+    avoidPlayers()
+
+    -- 3. Turun perlahan ke CP
+    tweenTo(pos + Vector3.new(0, 3, 0), 1.5)
+    task.wait(0.5)
+    avoidPlayers()
+
+    -- 4. Muter di sekitar CP (hindari kursi + player)
     for i=1,3 do
         if stopFlag then return end
         local safe = safePosAround(pos, 5)
         walkTo(safe)
+        avoidPlayers()
     end
 
-    -- 4. Masuk ke CP
+    -- 5. Masuk ke CP
     walkTo(pos)
 
-    -- 5. Loncat2 beberapa detik
+    -- 6. Loncat2 beberapa detik sambil cek player
     local t0 = tick()
     while tick() - t0 < 3 do
         if stopFlag then return end
         humanoid.Jump = true
+        avoidPlayers()
         task.wait(0.5)
     end
 end
