@@ -1,6 +1,6 @@
---// Arunika CP Tool (Final v3)
--- GUI + Auto TP Cepat + Auto Natural (fly, circle, jump) 
--- Anti-Duduk + Auto Respawn + Auto Rejoin + Stop Button
+--// Arunika CP Tool (Final v5)
+-- GUI + Auto TP Cepat + Auto Natural
+-- Auto Respawn + Auto Rejoin + Anti-Kursi Natural + Stop Button
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -13,13 +13,6 @@ local stopFlag = false
 local function setupChar(char)
     humanoid = char:WaitForChild("Humanoid")
     hrp = char:WaitForChild("HumanoidRootPart")
-
-    -- Anti-duduk
-    humanoid:GetPropertyChangedSignal("Sit"):Connect(function()
-        if humanoid.Sit then
-            humanoid.Sit = false
-        end
-    end)
 
     -- Auto respawn
     humanoid.Died:Connect(function()
@@ -79,6 +72,33 @@ local function fastTP(pos)
     end
 end
 
+-- Cari posisi aman (tidak dekat kursi)
+local function safePosAround(cpPos, radius)
+    local try = 0
+    while try < 10 do
+        try += 1
+        local angle = math.rad(math.random(0,360))
+        local offset = Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius)
+        local testPos = cpPos + offset
+
+        local nearSeat = false
+        for _,v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("Seat") or v:IsA("VehicleSeat") then
+                if (v.Position - testPos).Magnitude < 5 then
+                    nearSeat = true
+                    break
+                end
+            end
+        end
+
+        if not nearSeat then
+            return testPos
+        end
+    end
+    return cpPos + Vector3.new(radius,0,0) -- fallback
+end
+
+-- Natural Process
 local function processNatural(pos)
     if not hrp then return end
 
@@ -90,13 +110,11 @@ local function processNatural(pos)
     tweenTo(pos + Vector3.new(0, 3, 0), 1.2)
     task.wait(0.5)
 
-    -- 3. Muter kecil di sekitar CP
-    local radius = 3
+    -- 3. Muter di sekitar CP (hindari kursi)
     for i=1,3 do
         if stopFlag then return end
-        local angle = math.rad(i*120)
-        local offset = Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius)
-        walkTo(pos + offset)
+        local safe = safePosAround(pos, 5)
+        walkTo(safe)
     end
 
     -- 4. Masuk ke CP
