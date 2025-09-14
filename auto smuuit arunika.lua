@@ -1,262 +1,151 @@
-local player = game.Players.LocalPlayer
-local UserInputService = game:GetService("UserInputService")
+--// CHECKPOINT SAVER with File Save
+-- by ChatGPT
 
--- Pastikan HRP siap
-local hrp
-local function getHRP()
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        hrp = player.Character.HumanoidRootPart
-    else
-        player.CharacterAdded:Wait()
-        hrp = player.Character:WaitForChild("HumanoidRootPart")
-    end
-end
-getHRP()
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
-local savedPositions = {}
-local cpNames = {}
+local savedPoints = {}
+local saveFile = "checkpoint_data.json" -- nama file penyimpanan
 
--- ScreenGui
-local gui = Instance.new("ScreenGui")
-gui.Name = "CoordinateSaverGUI"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
-
--- Frame utama
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 360, 0, 650)
-frame.Position = UDim2.new(0, 20, 0, 50)
-frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-frame.Parent = gui
-
--- Header drag
-local header = Instance.new("Frame")
-header.Size = UDim2.new(1,0,0,40)
-header.BackgroundColor3 = Color3.fromRGB(80,80,80)
-header.Parent = frame
-
-local headerLabel = Instance.new("TextLabel")
-headerLabel.Size = UDim2.new(1,0,1,0)
-headerLabel.BackgroundTransparency = 1
-headerLabel.Text = "Coordinate Saver"
-headerLabel.TextColor3 = Color3.fromRGB(255,255,255)
-headerLabel.TextScaled = true
-headerLabel.Parent = header
-
--- Input nama CP
-local nameBox = Instance.new("TextBox")
-nameBox.Size = UDim2.new(1,-20,0,30)
-nameBox.Position = UDim2.new(0,10,0,50)
-nameBox.PlaceholderText = "Masukkan nama CP"
-nameBox.TextColor3 = Color3.fromRGB(255,255,255)
-nameBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
-nameBox.Parent = frame
-
--- Tombol Save Kordinat
-local saveBtn = Instance.new("TextButton")
-saveBtn.Size = UDim2.new(1,-20,0,40)
-saveBtn.Position = UDim2.new(0,10,0,90)
-saveBtn.Text = "Save Kordinat"
-saveBtn.BackgroundColor3 = Color3.fromRGB(60,180,60)
-saveBtn.TextColor3 = Color3.fromRGB(255,255,255)
-saveBtn.TextScaled = true
-saveBtn.Parent = frame
-
--- Tombol Cetak Kode
-local printBtn = Instance.new("TextButton")
-printBtn.Size = UDim2.new(1,-20,0,40)
-printBtn.Position = UDim2.new(0,10,0,140)
-printBtn.Text = "Cetak Kode"
-printBtn.BackgroundColor3 = Color3.fromRGB(150,60,60)
-printBtn.TextColor3 = Color3.fromRGB(255,255,255)
-printBtn.Parent = frame
-
--- Tombol Auto Teleport
-local tpBtn = Instance.new("TextButton")
-tpBtn.Size = UDim2.new(1,-20,0,40)
-tpBtn.Position = UDim2.new(0,10,0,190)
-tpBtn.Text = "Auto Teleport"
-tpBtn.BackgroundColor3 = Color3.fromRGB(60,60,150)
-tpBtn.TextColor3 = Color3.fromRGB(255,255,255)
-tpBtn.Parent = frame
-
--- Tombol Auto Loop Teleport
-local loopBtn = Instance.new("TextButton")
-loopBtn.Size = UDim2.new(1,-20,0,40)
-loopBtn.Position = UDim2.new(0,10,0,240)
-loopBtn.Text = "Auto Loop Teleport"
-loopBtn.BackgroundColor3 = Color3.fromRGB(80,80,200)
-loopBtn.TextColor3 = Color3.fromRGB(255,255,255)
-loopBtn.Parent = frame
-
--- Tombol Clear All
-local clearBtn = Instance.new("TextButton")
-clearBtn.Size = UDim2.new(1,-20,0,40)
-clearBtn.Position = UDim2.new(0,10,0,290)
-clearBtn.Text = "Clear All"
-clearBtn.BackgroundColor3 = Color3.fromRGB(200,60,60)
-clearBtn.TextColor3 = Color3.fromRGB(255,255,255)
-clearBtn.Parent = frame
-
--- Delay teleport
-local delayBox = Instance.new("TextBox")
-delayBox.Size = UDim2.new(1,-20,0,30)
-delayBox.Position = UDim2.new(0,10,0,340)
-delayBox.PlaceholderText = "Delay teleport (detik)"
-delayBox.Text = "0.5"
-delayBox.TextColor3 = Color3.fromRGB(255,255,255)
-delayBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
-delayBox.Parent = frame
-
--- ScrollFrame koordinat
-local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1,-20,0,260)
-scrollFrame.Position = UDim2.new(0,10,0,380)
-scrollFrame.BackgroundColor3 = Color3.fromRGB(50,50,50)
-scrollFrame.ScrollBarThickness = 6
-scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-scrollFrame.Parent = frame
-
-local uiListLayout = Instance.new("UIListLayout")
-uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-uiListLayout.Padding = UDim.new(0,5)
-uiListLayout.Parent = scrollFrame
-
--- Fungsi update ScrollFrame
-local function updateScrollFrame()
-    scrollFrame:ClearAllChildren()
-    uiListLayout.Parent = scrollFrame
-    for i,pos in ipairs(savedPositions) do
-        local cpName = cpNames[i] or ("CP"..i)
-
-        local container = Instance.new("Frame")
-        container.Size = UDim2.new(1,0,0,30)
-        container.BackgroundTransparency = 1
-        container.Parent = scrollFrame
-
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(0.85,0,1,0)
-        label.Position = UDim2.new(0,0,0,0)
-        label.BackgroundTransparency = 1
-        label.TextColor3 = Color3.fromRGB(255,255,0) -- kuning
-        label.TextScaled = true
-        label.TextWrapped = true
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.TextYAlignment = Enum.TextYAlignment.Center
-        label.Text = cpName .. ": Vector3.new("..pos.X..","..pos.Y..","..pos.Z..")"
-        label.Parent = container
-
-        local delBtn = Instance.new("TextButton")
-        delBtn.Size = UDim2.new(0.15,0,1,0)
-        delBtn.Position = UDim2.new(0.85,0,0,0)
-        delBtn.Text = "Del"
-        delBtn.BackgroundColor3 = Color3.fromRGB(150,50,50)
-        delBtn.TextColor3 = Color3.fromRGB(255,255,255)
-        delBtn.TextScaled = true
-        delBtn.Parent = container
-
-        delBtn.MouseButton1Click:Connect(function()
-            table.remove(savedPositions,i)
-            table.remove(cpNames,i)
-            updateScrollFrame()
-        end)
-    end
-end
-
--- Notifikasi
-local function notify(msg)
-    local notif = Instance.new("TextLabel")
-    notif.Size = UDim2.new(1,0,0,30)
-    notif.Position = UDim2.new(0,0,0,0)
-    notif.BackgroundColor3 = Color3.fromRGB(50,50,50)
-    notif.TextColor3 = Color3.fromRGB(255,255,0)
-    notif.Text = msg
-    notif.TextScaled = true
-    notif.Parent = frame
-    game.Debris:AddItem(notif,1.5)
-end
-
--- Tombol Save Kordinat
-saveBtn.MouseButton1Click:Connect(function()
-    getHRP()
-    if not hrp then return end
-    table.insert(savedPositions,hrp.Position)
-    local inputName = nameBox.Text
-    if inputName == "" then inputName = "CP"..#savedPositions end
-    table.insert(cpNames,inputName)
-    nameBox.Text = ""
-    updateScrollFrame()
-    notify("Koordinat "..inputName.." tersimpan di GUI!")
-end)
-
--- Tombol Cetak Kode
-printBtn.MouseButton1Click:Connect(function()
-    print("Kode koordinat siap pakai:")
-    for i,pos in ipairs(savedPositions) do
-        local cpName = cpNames[i] or ("CP"..i)
-        print(cpName.." = Vector3.new("..pos.X..","..pos.Y..","..pos.Z..")")
-    end
-    notify("Kode koordinat dicetak di output")
-end)
-
--- Tombol Auto Teleport
-tpBtn.MouseButton1Click:Connect(function()
-    getHRP()
-    if not hrp then return end
-    local delayTime = tonumber(delayBox.Text) or 0.5
-    for i,pos in ipairs(savedPositions) do
-        hrp.CFrame = CFrame.new(pos)
-        wait(delayTime)
-    end
-    notify("Selesai Auto Teleport")
-end)
-
--- Tombol Auto Loop Teleport
-loopBtn.MouseButton1Click:Connect(function()
-    getHRP()
-    if not hrp then return end
-    local delayTime = tonumber(delayBox.Text) or 0.5
-    spawn(function()
-        while #savedPositions>0 do
-            for i,pos in ipairs(savedPositions) do
-                hrp.CFrame = CFrame.new(pos)
-                wait(delayTime)
-            end
-        end
+-- Cek apakah sudah ada file lama
+if isfile and isfile(saveFile) then
+    local data = readfile(saveFile)
+    local success, decoded = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(data)
     end)
-    notify("Auto Loop Teleport dimulai")
-end)
-
--- Tombol Clear All
-clearBtn.MouseButton1Click:Connect(function()
-    savedPositions = {}
-    cpNames = {}
-    updateScrollFrame()
-    notify("Semua koordinat dihapus")
-end)
-
--- Drag GUI mobile
-local dragging=false
-local dragStart
-local frameStart
-header.InputBegan:Connect(function(input)
-    if input.UserInputType==Enum.UserInputType.Touch then
-        dragging=true
-        dragStart=input.Position
-        frameStart=frame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState==Enum.UserInputState.End then dragging=false end
-        end)
+    if success and typeof(decoded) == "table" then
+        savedPoints = decoded
     end
-end)
-header.InputChanged:Connect(function(input)
-    if input.UserInputType==Enum.UserInputType.Touch then
-        UserInputService.InputChanged:Connect(function(move)
-            if dragging and move.UserInputType==Enum.UserInputType.Touch then
-                local delta=move.Position-dragStart
-                frame.Position=UDim2.new(frameStart.X.Scale,frameStart.X.Offset+delta.X,
-                                         frameStart.Y.Scale,frameStart.Y.Offset+delta.Y)
+end
+
+-- Fungsi simpan ke file
+local function saveToFile()
+    if writefile then
+        local data = game:GetService("HttpService"):JSONEncode(savedPoints)
+        writefile(saveFile, data)
+    end
+end
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+ScreenGui.Name = "CPGui"
+
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 250, 0, 300)
+Frame.Position = UDim2.new(0, 20, 0.5, -150)
+Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+Frame.BorderSizePixel = 2
+
+local Title = Instance.new("TextLabel", Frame)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(50,50,50)
+Title.Text = "Checkpoint Saver"
+Title.TextColor3 = Color3.fromRGB(255,255,255)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 18
+
+local BtnHolder = Instance.new("Frame", Frame)
+BtnHolder.Size = UDim2.new(1, -20, 0, 90)
+BtnHolder.Position = UDim2.new(0, 10, 0, 40)
+BtnHolder.BackgroundTransparency = 1
+
+local function makeButton(name, posY)
+    local btn = Instance.new("TextButton", BtnHolder)
+    btn.Size = UDim2.new(1, 0, 0, 25)
+    btn.Position = UDim2.new(0, 0, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 16
+    btn.Text = name
+    return btn
+end
+
+local SaveBtn = makeButton("Save Position", 0)
+local TpLastBtn = makeButton("Teleport Last", 30)
+local AutoBtn = makeButton("Auto Teleport All", 60)
+
+-- List
+local List = Instance.new("ScrollingFrame", Frame)
+List.Size = UDim2.new(1, -20, 0, 140)
+List.Position = UDim2.new(0, 10, 0, 140)
+List.CanvasSize = UDim2.new(0,0,0,0)
+List.BackgroundColor3 = Color3.fromRGB(35,35,35)
+List.BorderSizePixel = 1
+List.ScrollBarThickness = 6
+
+-- Refresh List
+local function refreshList()
+    List:ClearAllChildren()
+    for i, pos in ipairs(savedPoints) do
+        local Item = Instance.new("Frame", List)
+        Item.Size = UDim2.new(1, -10, 0, 30)
+        Item.Position = UDim2.new(0, 5, 0, (i-1)*35)
+        Item.BackgroundColor3 = Color3.fromRGB(45,45,45)
+        
+        local Label = Instance.new("TextLabel", Item)
+        Label.Size = UDim2.new(0.7, 0, 1, 0)
+        Label.BackgroundTransparency = 1
+        Label.Text = "CP "..i.." ("..math.floor(pos.X)..","..math.floor(pos.Y)..","..math.floor(pos.Z)..")"
+        Label.TextColor3 = Color3.fromRGB(255,255,255)
+        Label.Font = Enum.Font.SourceSans
+        Label.TextSize = 14
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+        
+        local TpBtn = Instance.new("TextButton", Item)
+        TpBtn.Size = UDim2.new(0.2, -5, 1, -5)
+        TpBtn.Position = UDim2.new(0.7, 0, 0, 2)
+        TpBtn.Text = "TP"
+        TpBtn.BackgroundColor3 = Color3.fromRGB(70,120,70)
+        TpBtn.TextColor3 = Color3.fromRGB(255,255,255)
+        
+        local DelBtn = Instance.new("TextButton", Item)
+        DelBtn.Size = UDim2.new(0.1, -5, 1, -5)
+        DelBtn.Position = UDim2.new(0.9, 0, 0, 2)
+        DelBtn.Text = "✖"
+        DelBtn.BackgroundColor3 = Color3.fromRGB(120,70,70)
+        DelBtn.TextColor3 = Color3.fromRGB(255,255,255)
+
+        -- Aksi tombol
+        TpBtn.MouseButton1Click:Connect(function()
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                player.Character.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(0,3,0))
             end
         end)
+        
+        DelBtn.MouseButton1Click:Connect(function()
+            table.remove(savedPoints, i)
+            saveToFile()
+            refreshList()
+        end)
+    end
+    List.CanvasSize = UDim2.new(0,0,0,#savedPoints*35)
+end
+
+-- Tombol utama
+SaveBtn.MouseButton1Click:Connect(function()
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local pos = player.Character.HumanoidRootPart.Position
+        table.insert(savedPoints, pos)
+        saveToFile()
+        refreshList()
     end
 end)
+
+TpLastBtn.MouseButton1Click:Connect(function()
+    if #savedPoints > 0 and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        player.Character.HumanoidRootPart.CFrame = CFrame.new(savedPoints[#savedPoints] + Vector3.new(0,3,0))
+    end
+end)
+
+AutoBtn.MouseButton1Click:Connect(function()
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        for i, pos in ipairs(savedPoints) do
+            player.Character.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(0,3,0))
+            task.wait(1)
+        end
+    end
+end)
+
+-- Awal: refresh list dari file
+refreshList()
