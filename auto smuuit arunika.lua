@@ -24,7 +24,7 @@ gui.Parent = player:WaitForChild("PlayerGui")
 
 -- Frame utama
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 360, 0, 600)
+frame.Size = UDim2.new(0, 360, 0, 650)
 frame.Position = UDim2.new(0, 20, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 frame.Parent = gui
@@ -52,13 +52,14 @@ nameBox.TextColor3 = Color3.fromRGB(255,255,255)
 nameBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
 nameBox.Parent = frame
 
--- Tombol Save Posisi
+-- Tombol Save Kordinat
 local saveBtn = Instance.new("TextButton")
 saveBtn.Size = UDim2.new(1,-20,0,40)
 saveBtn.Position = UDim2.new(0,10,0,90)
-saveBtn.Text = "Save Posisi"
-saveBtn.BackgroundColor3 = Color3.fromRGB(60,150,60)
+saveBtn.Text = "Save Kordinat"
+saveBtn.BackgroundColor3 = Color3.fromRGB(60,180,60)
 saveBtn.TextColor3 = Color3.fromRGB(255,255,255)
+saveBtn.TextScaled = true
 saveBtn.Parent = frame
 
 -- Tombol Cetak Kode
@@ -109,7 +110,7 @@ delayBox.Parent = frame
 
 -- ScrollFrame koordinat
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1,-20,0,220)
+scrollFrame.Size = UDim2.new(1,-20,0,260)
 scrollFrame.Position = UDim2.new(0,10,0,380)
 scrollFrame.BackgroundColor3 = Color3.fromRGB(50,50,50)
 scrollFrame.ScrollBarThickness = 6
@@ -134,22 +135,24 @@ local function updateScrollFrame()
         container.Parent = scrollFrame
 
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(0.7,0,1,0)
+        label.Size = UDim2.new(0.85,0,1,0)
         label.Position = UDim2.new(0,0,0,0)
         label.BackgroundTransparency = 1
         label.TextColor3 = Color3.fromRGB(255,255,0) -- kuning
         label.TextScaled = true
+        label.TextWrapped = true
         label.TextXAlignment = Enum.TextXAlignment.Left
+        label.TextYAlignment = Enum.TextYAlignment.Center
         label.Text = cpName .. ": Vector3.new("..pos.X..","..pos.Y..","..pos.Z..")"
         label.Parent = container
 
         local delBtn = Instance.new("TextButton")
-        delBtn.Size = UDim2.new(0.3,0,1,0)
-        delBtn.Position = UDim2.new(0.7,0,0,0)
+        delBtn.Size = UDim2.new(0.15,0,1,0)
+        delBtn.Position = UDim2.new(0.85,0,0,0)
         delBtn.Text = "Del"
-        delBtn.TextScaled = true
         delBtn.BackgroundColor3 = Color3.fromRGB(150,50,50)
         delBtn.TextColor3 = Color3.fromRGB(255,255,255)
+        delBtn.TextScaled = true
         delBtn.Parent = container
 
         delBtn.MouseButton1Click:Connect(function()
@@ -160,7 +163,7 @@ local function updateScrollFrame()
     end
 end
 
--- Notifikasi sederhana
+-- Notifikasi
 local function notify(msg)
     local notif = Instance.new("TextLabel")
     notif.Size = UDim2.new(1,0,0,30)
@@ -173,7 +176,7 @@ local function notify(msg)
     game.Debris:AddItem(notif,1.5)
 end
 
--- Tombol Save Posisi
+-- Tombol Save Kordinat
 saveBtn.MouseButton1Click:Connect(function()
     getHRP()
     if not hrp then return end
@@ -183,7 +186,7 @@ saveBtn.MouseButton1Click:Connect(function()
     table.insert(cpNames,inputName)
     nameBox.Text = ""
     updateScrollFrame()
-    notify("Koordinat "..inputName.." tersimpan!")
+    notify("Koordinat "..inputName.." tersimpan di GUI!")
 end)
 
 -- Tombol Cetak Kode
