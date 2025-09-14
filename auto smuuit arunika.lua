@@ -13,7 +13,7 @@ end
 local savedPositions = {}
 local cpNames = {}
 
--- ScreenGui di PlayerGui
+-- ScreenGui di PlayerGui (mobile ready)
 local gui = Instance.new("ScreenGui")
 gui.Parent = player:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
@@ -25,7 +25,7 @@ frame.Position = UDim2.new(0, 20, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 frame.Parent = gui
 
--- Header untuk drag
+-- Header drag
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1,0,0,40)
 header.BackgroundColor3 = Color3.fromRGB(80,80,80)
@@ -34,7 +34,7 @@ header.Parent = frame
 local headerLabel = Instance.new("TextLabel")
 headerLabel.Size = UDim2.new(1,0,1,0)
 headerLabel.BackgroundTransparency = 1
-headerLabel.Text = "Coordinate Saver Full"
+headerLabel.Text = "Coordinate Saver"
 headerLabel.TextColor3 = Color3.fromRGB(255,255,255)
 headerLabel.TextScaled = true
 headerLabel.Parent = header
@@ -121,7 +121,6 @@ local function updateScrollFrame()
         label.Text = cpName .. ": Vector3.new("..pos.X..","..pos.Y..","..pos.Z..")"
         label.Parent = container
 
-        -- Tombol Delete
         local delBtn = Instance.new("TextButton")
         delBtn.Size = UDim2.new(0.15,0,1,0)
         delBtn.Position = UDim2.new(0.7,0,0,0)
@@ -137,7 +136,6 @@ local function updateScrollFrame()
             updateScrollFrame()
         end)
 
-        -- Tombol Edit
         local editBtn = Instance.new("TextButton")
         editBtn.Size = UDim2.new(0.15,0,1,0)
         editBtn.Position = UDim2.new(0.85,0,0,0)
