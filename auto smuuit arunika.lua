@@ -1,12 +1,16 @@
---// Arunika CP Tool (Final v11)
--- Auto CP Natural + Loop + Anti Kursi + Anti Player + Auto Respawn + Auto Rejoin + GUI + Notifikasi
+--// Arunika CP Tool (Final v13)
+-- Fall Damage Safe + AI CP Detector + Persistent GUI + Auto Resume + Auto Rejoin
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
+local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 local humanoid, hrp
 local stopFlag = false
+
+-- ===== Global CP Progress =====
+_G.currentCP = _G.currentCP or 0  -- simpan CP terakhir diambil (persisten antar respawn)
 
 -- ===== Character Setup =====
 local function setupChar(char)
@@ -19,7 +23,14 @@ local function setupChar(char)
     end)
 end
 if player.Character then setupChar(player.Character) end
-player.CharacterAdded:Connect(setupChar)
+player.CharacterAdded:Connect(function(char)
+    setupChar(char)
+    if not stopFlag then
+        task.delay(3, function() -- auto lanjut setelah respawn
+            naturalRun()
+        end)
+    end
+end)
 
 -- ===== Auto Rejoin =====
 player.OnTeleport:Connect(function(State)
@@ -27,7 +38,6 @@ player.OnTeleport:Connect(function(State)
         TeleportService:Teleport(game.PlaceId, player)
     end
 end)
-
 game:GetService("CoreGui").RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(obj)
     if obj.Name == "ErrorPrompt" then
         TeleportService:Teleport(game.PlaceId, player)
@@ -46,11 +56,13 @@ local checkpoints = {
 
 -- ===== Notifikasi =====
 local function notify(msg)
-    game.StarterGui:SetCore("SendNotification", {
-        Title = "Arunika CP Tool",
-        Text = msg,
-        Duration = 3
-    })
+    pcall(function()
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Arunika CP Tool",
+            Text = msg,
+            Duration = 3
+        })
+    end)
 end
 
 -- ===== Helpers =====
@@ -97,12 +109,9 @@ local function safePosAround(cpPos, radius)
                 end
             end
         end
-
-        if not nearSeat then
-            return testPos
-        end
+        if not nearSeat then return testPos end
     end
-    return cpPos + Vector3.new(radius,0,0) -- fallback
+    return cpPos + Vector3.new(radius,0,0)
 end
 
 -- Cek & hindari player lain
@@ -120,29 +129,43 @@ local function avoidPlayers()
     return false
 end
 
--- Turun pelan agar tidak kena damage
+-- Turun pelan aman (anti fall damage)
 local function smoothDescend(targetPos)
-    local stages = {40, 20, 10, 3}
+    if not hrp then return end
+    local currentY = hrp.Position.Y
+    local targetY = targetPos.Y
+    local heightDiff = currentY - targetY
+
+    local stages = {}
+    local step = math.max(5, math.floor(heightDiff/6))
+    for h = heightDiff, 0, -step do
+        table.insert(stages, h)
+    end
+
     for _,h in ipairs(stages) do
-        tweenTo(Vector3.new(targetPos.X, targetPos.Y + h, targetPos.Z), 1.2)
-        task.wait(0.4)
+        local pos = Vector3.new(targetPos.X, targetY + h, targetPos.Z)
+        tweenTo(pos, 1.8)
+        task.wait(0.6)
         avoidPlayers()
     end
+
+    -- akhir: jalan kaki aman
+    walkTo(targetPos)
 end
 
 -- Natural Process
-local function processNatural(pos, index)
+function processNatural(pos, index)
     if not hrp then return end
     local startPos = hrp.Position
 
     -- 1. Naik tinggi
-    tweenTo(startPos + Vector3.new(0,40,0), 1.5)
-    task.wait(0.5)
+    tweenTo(startPos + Vector3.new(0,40,0), 2)
+    task.wait(0.6)
     avoidPlayers()
 
     -- 2. Terbang ke atas CP
     tweenTo(Vector3.new(pos.X, startPos.Y+40, pos.Z), 2.5)
-    task.wait(0.5)
+    task.wait(0.6)
     avoidPlayers()
 
     -- 3. Turun pelan ke CP
@@ -168,25 +191,26 @@ local function processNatural(pos, index)
         task.wait(0.5)
     end
 
+    _G.currentCP = index
     notify("✅ CP"..index.." diambil")
 
-    -- 7. Setelah ambil CP, naik lagi
+    -- 7. Naik lagi biar natural
     tweenTo(pos + Vector3.new(0,40,0), 1.5)
     task.wait(0.5)
 end
 
 -- Loop Natural Run
-local function naturalRun()
-    notify("▶️ Mulai Auto Loop")
+function naturalRun()
+    notify("▶️ Mulai Auto Loop (lanjut dari CP"..(_G.currentCP+1)..")")
     while not stopFlag do
-        for i,pos in ipairs(checkpoints) do
+        for i = _G.currentCP + 1, #checkpoints do
             if stopFlag then break end
-            processNatural(pos, i)
+            processNatural(checkpoints[i], i)
             task.wait(math.random(2,4))
         end
-        -- Auto respawn setelah CP6
         if not stopFlag then
             notify("🔄 Respawn ulang")
+            _G.currentCP = 0
             player:LoadCharacter()
             task.wait(5)
         end
@@ -195,10 +219,14 @@ local function naturalRun()
 end
 
 -- ===== GUI =====
+if CoreGui:FindFirstChild("ArunikaCPGui") then
+    CoreGui.ArunikaCPGui:Destroy()
+end
+
 local gui = Instance.new("ScreenGui")
 gui.Name = "ArunikaCPGui"
 gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
+gui.Parent = CoreGui
 
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0, 220, 0, 180)
@@ -207,7 +235,7 @@ frame.BackgroundColor3 = Color3.fromRGB(35,35,35)
 
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1,0,0,28)
-title.Text = "Arunika CP Tool v11"
+title.Text = "Arunika CP Tool v13"
 title.Font = Enum.Font.GothamBold
 title.TextSize = 16
 title.TextColor3 = Color3.fromRGB(255,255,255)
@@ -246,6 +274,7 @@ btn1.MouseButton1Click:Connect(function()
     for i,pos in ipairs(checkpoints) do
         if stopFlag then break end
         fastTP(pos)
+        _G.currentCP = i
         notify("✅ CP"..i.." (TP Cepat)")
         task.wait(1)
     end
