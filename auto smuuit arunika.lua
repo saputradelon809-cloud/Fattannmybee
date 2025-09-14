@@ -13,7 +13,7 @@ end
 local savedPositions = {}
 local cpNames = {}
 
--- ScreenGui di PlayerGui (mobile ready)
+-- ScreenGui di PlayerGui (mobile-ready)
 local gui = Instance.new("ScreenGui")
 gui.Parent = player:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
@@ -100,7 +100,7 @@ uiListLayout.Parent = scrollFrame
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 uiListLayout.Padding = UDim.new(0,5)
 
--- Update ScrollFrame
+-- Fungsi update ScrollFrame
 local function updateScrollFrame()
     scrollFrame:ClearAllChildren()
     uiListLayout.Parent = scrollFrame
@@ -121,6 +121,7 @@ local function updateScrollFrame()
         label.Text = cpName .. ": Vector3.new("..pos.X..","..pos.Y..","..pos.Z..")"
         label.Parent = container
 
+        -- Tombol Delete
         local delBtn = Instance.new("TextButton")
         delBtn.Size = UDim2.new(0.15,0,1,0)
         delBtn.Position = UDim2.new(0.7,0,0,0)
@@ -136,6 +137,7 @@ local function updateScrollFrame()
             updateScrollFrame()
         end)
 
+        -- Tombol Edit
         local editBtn = Instance.new("TextButton")
         editBtn.Size = UDim2.new(0.15,0,1,0)
         editBtn.Position = UDim2.new(0.85,0,0,0)
