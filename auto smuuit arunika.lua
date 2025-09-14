@@ -1,6 +1,5 @@
---// Arunika CP Tool (Final v7)
--- GUI + Auto TP Cepat + Auto Natural
--- Auto Respawn + Auto Rejoin + Anti-Kursi + Anti-Player + Stop Button
+--// Arunika CP Tool (Final v11)
+-- Auto CP Natural + Loop + Anti Kursi + Anti Player + Auto Respawn + Auto Rejoin + GUI + Notifikasi
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -14,7 +13,6 @@ local function setupChar(char)
     humanoid = char:WaitForChild("Humanoid")
     hrp = char:WaitForChild("HumanoidRootPart")
 
-    -- Auto respawn
     humanoid.Died:Connect(function()
         stopFlag = true
         player:LoadCharacter()
@@ -45,6 +43,15 @@ local checkpoints = {
     Vector3.new(923,104,280),   -- CP 5
     Vector3.new(257,328,699),   -- CP 6
 }
+
+-- ===== Notifikasi =====
+local function notify(msg)
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Arunika CP Tool",
+        Text = msg,
+        Duration = 3
+    })
+end
 
 -- ===== Helpers =====
 local function tweenTo(pos, duration)
@@ -104,7 +111,6 @@ local function avoidPlayers()
         if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
             local otherHRP = plr.Character.HumanoidRootPart
             if (otherHRP.Position - hrp.Position).Magnitude < 6 then
-                -- Naik ke atas untuk menghindar
                 tweenTo(hrp.Position + Vector3.new(0,15,0), 0.8)
                 task.wait(0.5)
                 return true
@@ -114,27 +120,35 @@ local function avoidPlayers()
     return false
 end
 
--- Natural Process (terbang antar CP + hindari kursi + player)
-local function processNatural(pos)
+-- Turun pelan agar tidak kena damage
+local function smoothDescend(targetPos)
+    local stages = {40, 20, 10, 3}
+    for _,h in ipairs(stages) do
+        tweenTo(Vector3.new(targetPos.X, targetPos.Y + h, targetPos.Z), 1.2)
+        task.wait(0.4)
+        avoidPlayers()
+    end
+end
+
+-- Natural Process
+local function processNatural(pos, index)
     if not hrp then return end
     local startPos = hrp.Position
 
-    -- 1. Naik ke atas
-    tweenTo(startPos + Vector3.new(0,30,0), 1.5)
+    -- 1. Naik tinggi
+    tweenTo(startPos + Vector3.new(0,40,0), 1.5)
     task.wait(0.5)
     avoidPlayers()
 
-    -- 2. Terbang horizontal di atas CP
-    tweenTo(Vector3.new(pos.X, startPos.Y+30, pos.Z), 2)
+    -- 2. Terbang ke atas CP
+    tweenTo(Vector3.new(pos.X, startPos.Y+40, pos.Z), 2.5)
     task.wait(0.5)
     avoidPlayers()
 
-    -- 3. Turun perlahan ke CP
-    tweenTo(pos + Vector3.new(0, 3, 0), 1.5)
-    task.wait(0.5)
-    avoidPlayers()
+    -- 3. Turun pelan ke CP
+    smoothDescend(pos)
 
-    -- 4. Muter di sekitar CP (hindari kursi + player)
+    -- 4. Muter2 di sekitar CP
     for i=1,3 do
         if stopFlag then return end
         local safe = safePosAround(pos, 5)
@@ -145,7 +159,7 @@ local function processNatural(pos)
     -- 5. Masuk ke CP
     walkTo(pos)
 
-    -- 6. Loncat2 beberapa detik sambil cek player
+    -- 6. Loncat2
     local t0 = tick()
     while tick() - t0 < 3 do
         if stopFlag then return end
@@ -153,6 +167,31 @@ local function processNatural(pos)
         avoidPlayers()
         task.wait(0.5)
     end
+
+    notify("✅ CP"..index.." diambil")
+
+    -- 7. Setelah ambil CP, naik lagi
+    tweenTo(pos + Vector3.new(0,40,0), 1.5)
+    task.wait(0.5)
+end
+
+-- Loop Natural Run
+local function naturalRun()
+    notify("▶️ Mulai Auto Loop")
+    while not stopFlag do
+        for i,pos in ipairs(checkpoints) do
+            if stopFlag then break end
+            processNatural(pos, i)
+            task.wait(math.random(2,4))
+        end
+        -- Auto respawn setelah CP6
+        if not stopFlag then
+            notify("🔄 Respawn ulang")
+            player:LoadCharacter()
+            task.wait(5)
+        end
+    end
+    notify("⏹️ Auto Loop dihentikan")
 end
 
 -- ===== GUI =====
@@ -168,7 +207,7 @@ frame.BackgroundColor3 = Color3.fromRGB(35,35,35)
 
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1,0,0,28)
-title.Text = "Arunika CP Tool"
+title.Text = "Arunika CP Tool v11"
 title.Font = Enum.Font.GothamBold
 title.TextSize = 16
 title.TextColor3 = Color3.fromRGB(255,255,255)
@@ -186,7 +225,7 @@ btn1.TextColor3 = Color3.fromRGB(255,255,255)
 local btn2 = Instance.new("TextButton", frame)
 btn2.Size = UDim2.new(1,-20,0,32)
 btn2.Position = UDim2.new(0,10,0,80)
-btn2.Text = "Auto Natural"
+btn2.Text = "Auto Natural Loop"
 btn2.Font = Enum.Font.Gotham
 btn2.TextSize = 14
 btn2.BackgroundColor3 = Color3.fromRGB(70,70,70)
@@ -204,20 +243,17 @@ btnStop.TextColor3 = Color3.fromRGB(255,255,255)
 -- ===== Actions =====
 btn1.MouseButton1Click:Connect(function()
     stopFlag = false
-    for _,pos in ipairs(checkpoints) do
+    for i,pos in ipairs(checkpoints) do
         if stopFlag then break end
         fastTP(pos)
+        notify("✅ CP"..i.." (TP Cepat)")
         task.wait(1)
     end
 end)
 
 btn2.MouseButton1Click:Connect(function()
     stopFlag = false
-    for _,pos in ipairs(checkpoints) do
-        if stopFlag then break end
-        processNatural(pos)
-        task.wait(math.random(2,4))
-    end
+    naturalRun()
 end)
 
 btnStop.MouseButton1Click:Connect(function()
