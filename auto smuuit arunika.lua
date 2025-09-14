@@ -1,49 +1,66 @@
---// Arunika CP Tool (Auto Respawn + Loop Aman)
--- Fitur:
--- 1. Jalan CP 1-6 otomatis
--- 2. Auto respawn setelah selesai
--- 3. Lanjut otomatis setelah respawn (tidak macet)
+--// Arunika CP Tool (Final v3)
+-- GUI + Auto TP Cepat + Auto Natural (fly, circle, jump) 
+-- Anti-Duduk + Auto Respawn + Auto Rejoin + Stop Button
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
 local player = Players.LocalPlayer
 local humanoid, hrp
-
--- Daftar CP
-local checkpoints = {
-    Vector3.new(135,144,-175),
-    Vector3.new(326,92,-434),
-    Vector3.new(476,172,-940),
-    Vector3.new(930,136,-627),
-    Vector3.new(923,104,280),
-    Vector3.new(257,328,699),
-}
-
--- State
-local runningMode = nil -- "fast" / "natural"
 local stopFlag = false
 
--- ===== Character =====
-local function getChar()
-    local char = player.Character or player.CharacterAdded:Wait()
+-- ===== Character Setup =====
+local function setupChar(char)
     humanoid = char:WaitForChild("Humanoid")
     hrp = char:WaitForChild("HumanoidRootPart")
+
+    -- Anti-duduk
+    humanoid:GetPropertyChangedSignal("Sit"):Connect(function()
+        if humanoid.Sit then
+            humanoid.Sit = false
+        end
+    end)
+
+    -- Auto respawn
+    humanoid.Died:Connect(function()
+        stopFlag = true
+        player:LoadCharacter()
+    end)
 end
-player.CharacterAdded:Connect(function()
-    getChar()
-    -- kalau sedang running, restart loop sesuai mode
-    if runningMode == "fast" then
-        task.spawn(runFastLoop)
-    elseif runningMode == "natural" then
-        task.spawn(runNaturalLoop)
+if player.Character then setupChar(player.Character) end
+player.CharacterAdded:Connect(setupChar)
+
+-- ===== Auto Rejoin =====
+player.OnTeleport:Connect(function(State)
+    if State == Enum.TeleportState.Failed then
+        TeleportService:Teleport(game.PlaceId, player)
     end
 end)
-getChar()
+
+game:GetService("CoreGui").RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(obj)
+    if obj.Name == "ErrorPrompt" then
+        TeleportService:Teleport(game.PlaceId, player)
+    end
+end)
+
+-- ===== Checkpoints =====
+local checkpoints = {
+    Vector3.new(135,144,-175),  -- CP 1
+    Vector3.new(326,92,-434),   -- CP 2
+    Vector3.new(476,172,-940),  -- CP 3
+    Vector3.new(930,136,-627),  -- CP 4
+    Vector3.new(923,104,280),   -- CP 5
+    Vector3.new(257,328,699),   -- CP 6
+}
 
 -- ===== Helpers =====
 local function tweenTo(pos, duration)
     if hrp then
-        local tween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {CFrame = CFrame.new(pos)})
+        local tween = TweenService:Create(
+            hrp,
+            TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {CFrame = CFrame.new(pos)}
+        )
         tween:Play()
         tween.Completed:Wait()
     end
@@ -64,72 +81,39 @@ end
 
 local function processNatural(pos)
     if not hrp then return end
-    -- 1. Fly atas CP
+
+    -- 1. Fly di atas CP
     tweenTo(pos + Vector3.new(0, 15, 0), 1.5)
     task.wait(math.random(1,2))
-    -- 2. Turun
+
+    -- 2. Turun perlahan
     tweenTo(pos + Vector3.new(0, 3, 0), 1.2)
     task.wait(0.5)
-    -- 3. Muter-muter
-    local radius = 4
+
+    -- 3. Muter kecil di sekitar CP
+    local radius = 3
     for i=1,3 do
+        if stopFlag then return end
         local angle = math.rad(i*120)
         local offset = Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius)
         walkTo(pos + offset)
     end
-    -- 4. Masuk CP
+
+    -- 4. Masuk ke CP
     walkTo(pos)
-    -- 5. Loncat-loncat
+
+    -- 5. Loncat2 beberapa detik
     local t0 = tick()
     while tick() - t0 < 3 do
+        if stopFlag then return end
         humanoid.Jump = true
         task.wait(0.5)
     end
 end
 
--- ===== Respawn =====
-local function autoRespawn()
-    if humanoid then
-        humanoid.Health = 0
-    end
-end
-
--- ===== Loops =====
-function runFastLoop()
-    stopFlag = false
-    while not stopFlag do
-        for _,pos in ipairs(checkpoints) do
-            if stopFlag then break end
-            fastTP(pos)
-            task.wait(1)
-        end
-        -- kalau udah habis CP → respawn otomatis
-        if not stopFlag then
-            autoRespawn()
-            task.wait(5) -- tunggu respawn
-        end
-    end
-end
-
-function runNaturalLoop()
-    stopFlag = false
-    while not stopFlag do
-        for _,pos in ipairs(checkpoints) do
-            if stopFlag then break end
-            processNatural(pos)
-            task.wait(math.random(2,4))
-        end
-        -- kalau udah habis CP → respawn otomatis
-        if not stopFlag then
-            autoRespawn()
-            task.wait(5) -- tunggu respawn
-        end
-    end
-end
-
 -- ===== GUI =====
 local gui = Instance.new("ScreenGui")
-gui.Name = "CPGui"
+gui.Name = "ArunikaCPGui"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
@@ -140,7 +124,7 @@ frame.BackgroundColor3 = Color3.fromRGB(35,35,35)
 
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1,0,0,28)
-title.Text = "Arunika CP Tool (AutoRespawn)"
+title.Text = "Arunika CP Tool"
 title.Font = Enum.Font.GothamBold
 title.TextSize = 16
 title.TextColor3 = Color3.fromRGB(255,255,255)
@@ -149,7 +133,7 @@ title.BackgroundColor3 = Color3.fromRGB(50,50,50)
 local btn1 = Instance.new("TextButton", frame)
 btn1.Size = UDim2.new(1,-20,0,32)
 btn1.Position = UDim2.new(0,10,0,40)
-btn1.Text = "Start Fast Loop"
+btn1.Text = "Auto TP Cepat"
 btn1.Font = Enum.Font.Gotham
 btn1.TextSize = 14
 btn1.BackgroundColor3 = Color3.fromRGB(70,70,70)
@@ -158,33 +142,40 @@ btn1.TextColor3 = Color3.fromRGB(255,255,255)
 local btn2 = Instance.new("TextButton", frame)
 btn2.Size = UDim2.new(1,-20,0,32)
 btn2.Position = UDim2.new(0,10,0,80)
-btn2.Text = "Start Natural Loop"
+btn2.Text = "Auto Natural"
 btn2.Font = Enum.Font.Gotham
 btn2.TextSize = 14
 btn2.BackgroundColor3 = Color3.fromRGB(70,70,70)
 btn2.TextColor3 = Color3.fromRGB(255,255,255)
 
-local stopBtn = Instance.new("TextButton", frame)
-stopBtn.Size = UDim2.new(1,-20,0,32)
-stopBtn.Position = UDim2.new(0,10,0,130)
-stopBtn.Text = "STOP"
-stopBtn.Font = Enum.Font.GothamBold
-stopBtn.TextSize = 14
-stopBtn.BackgroundColor3 = Color3.fromRGB(120,40,40)
-stopBtn.TextColor3 = Color3.fromRGB(255,255,255)
+local btnStop = Instance.new("TextButton", frame)
+btnStop.Size = UDim2.new(1,-20,0,32)
+btnStop.Position = UDim2.new(0,10,0,130)
+btnStop.Text = "STOP"
+btnStop.Font = Enum.Font.GothamBold
+btnStop.TextSize = 14
+btnStop.BackgroundColor3 = Color3.fromRGB(180,50,50)
+btnStop.TextColor3 = Color3.fromRGB(255,255,255)
 
--- ===== Button Actions =====
+-- ===== Actions =====
 btn1.MouseButton1Click:Connect(function()
-    runningMode = "fast"
-    task.spawn(runFastLoop)
+    stopFlag = false
+    for _,pos in ipairs(checkpoints) do
+        if stopFlag then break end
+        fastTP(pos)
+        task.wait(1)
+    end
 end)
 
 btn2.MouseButton1Click:Connect(function()
-    runningMode = "natural"
-    task.spawn(runNaturalLoop)
+    stopFlag = false
+    for _,pos in ipairs(checkpoints) do
+        if stopFlag then break end
+        processNatural(pos)
+        task.wait(math.random(2,4))
+    end
 end)
 
-stopBtn.MouseButton1Click:Connect(function()
+btnStop.MouseButton1Click:Connect(function()
     stopFlag = true
-    runningMode = nil
 end)
