@@ -1,7 +1,7 @@
 local player = game.Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 
--- Pastikan HumanoidRootPart siap
+-- Pastikan HRP siap
 local hrp
 local function getHRP()
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -137,7 +137,7 @@ local function updateScrollFrame()
         label.Size = UDim2.new(0.7,0,1,0)
         label.Position = UDim2.new(0,0,0,0)
         label.BackgroundTransparency = 1
-        label.TextColor3 = Color3.fromRGB(255,255,0)
+        label.TextColor3 = Color3.fromRGB(255,255,0) -- kuning
         label.TextScaled = true
         label.TextXAlignment = Enum.TextXAlignment.Left
         label.Text = cpName .. ": Vector3.new("..pos.X..","..pos.Y..","..pos.Z..")"
@@ -177,8 +177,7 @@ end
 saveBtn.MouseButton1Click:Connect(function()
     getHRP()
     if not hrp then return end
-    local pos = hrp.Position
-    table.insert(savedPositions,pos)
+    table.insert(savedPositions,hrp.Position)
     local inputName = nameBox.Text
     if inputName == "" then inputName = "CP"..#savedPositions end
     table.insert(cpNames,inputName)
