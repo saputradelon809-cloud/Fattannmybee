@@ -1,5 +1,5 @@
---// Arunika CP Tool (Final v15)
--- Auto Detect CP + Smooth Descend + Persistent GUI + Auto Resume
+--// Arunika CP Tool (Final v15.2)
+-- Auto Detect CP + Nearest Start + Smooth Descend + Persistent GUI
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -62,6 +62,20 @@ end
 
 local checkpoints = getCheckpoints()
 
+-- ===== Nearest CP Finder =====
+local function getNearestCP()
+    local nearest,dist,index
+    for i,cp in ipairs(checkpoints) do
+        local d = (hrp.Position - cp.Position).Magnitude
+        if not dist or d < dist then
+            nearest = cp
+            dist = d
+            index = i
+        end
+    end
+    return nearest, index
+end
+
 -- ===== Notifikasi =====
 local function notify(msg)
     pcall(function()
@@ -99,25 +113,9 @@ local function fastTP(pos)
     end
 end
 
--- Cek & hindari player lain
-local function avoidPlayers()
-    for _,plr in ipairs(Players:GetPlayers()) do
-        if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local otherHRP = plr.Character.HumanoidRootPart
-            if (otherHRP.Position - hrp.Position).Magnitude < 6 then
-                tweenTo(hrp.Position + Vector3.new(0,15,0), 0.8)
-                task.wait(0.5)
-                return true
-            end
-        end
-    end
-    return false
-end
-
 -- Turun smooth slow motion
 local function smoothDescend(targetPos)
     if not hrp then return end
-
     local currentY = hrp.Position.Y
     local targetY = targetPos.Y
     local heightDiff = currentY - targetY
@@ -161,16 +159,16 @@ local function goToCP(cpObj, index)
     _G.currentCP = index
     notify("✅ "..cpObj.Name.." diambil")
 
-    -- 5. Naik sedikit lagi (biar natural)
+    -- 5. Naik sedikit lagi
     tweenTo(cpPos + Vector3.new(0,30,0), 1.5)
     task.wait(0.5)
 end
 
 -- Loop Natural Run
 function naturalRun()
-    notify("▶️ Mulai Auto Loop (lanjut dari CP"..(_G.currentCP+1)..")")
+    notify("▶️ Auto Loop jalan dari CP"..(_G.currentCP+1))
     while not stopFlag do
-        checkpoints = getCheckpoints() -- refresh CP kalau ada update di map
+        checkpoints = getCheckpoints()
         for i = _G.currentCP + 1, #checkpoints do
             if stopFlag then break end
             goToCP(checkpoints[i], i)
@@ -203,7 +201,7 @@ frame.BackgroundColor3 = Color3.fromRGB(35,35,35)
 
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1,0,0,28)
-title.Text = "Arunika CP Tool v15"
+title.Text = "Arunika CP Tool v15.2"
 title.Font = Enum.Font.GothamBold
 title.TextSize = 16
 title.TextColor3 = Color3.fromRGB(255,255,255)
@@ -240,20 +238,34 @@ btnStop.TextColor3 = Color3.fromRGB(255,255,255)
 btn1.MouseButton1Click:Connect(function()
     stopFlag = false
     checkpoints = getCheckpoints()
-    for i,cp in ipairs(checkpoints) do
-        if stopFlag then break end
-        fastTP(cp.Position)
-        _G.currentCP = i
-        notify("✅ "..cp.Name.." (TP Cepat)")
-        task.wait(1)
-    end
+    _G.currentCP = 0
+    task.spawn(function()
+        for i,cp in ipairs(checkpoints) do
+            if stopFlag then break end
+            fastTP(cp.Position)
+            _G.currentCP = i
+            notify("✅ "..cp.Name.." (TP Cepat)")
+            task.wait(1)
+        end
+    end)
 end)
 
 btn2.MouseButton1Click:Connect(function()
     stopFlag = false
-    naturalRun()
+    checkpoints = getCheckpoints()
+    local _, idx = getNearestCP()
+    if idx then
+        _G.currentCP = idx
+        notify("▶️ Mulai dari "..checkpoints[idx].Name)
+    else
+        _G.currentCP = 0
+    end
+    task.spawn(function()
+        naturalRun()
+    end)
 end)
 
 btnStop.MouseButton1Click:Connect(function()
     stopFlag = true
+    notify("⏹️ Auto dihentikan")
 end)
