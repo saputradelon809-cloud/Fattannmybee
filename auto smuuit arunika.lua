@@ -13,8 +13,9 @@ end
 local savedPositions = {}
 local cpNames = {}
 
--- ScreenGui di PlayerGui (mobile-ready)
+-- ScreenGui di PlayerGui
 local gui = Instance.new("ScreenGui")
+gui.Name = "CoordinateSaverGUI"
 gui.Parent = player:WaitForChild("PlayerGui")
 gui.ResetOnSpawn = false
 
@@ -39,12 +40,11 @@ headerLabel.TextColor3 = Color3.fromRGB(255,255,255)
 headerLabel.TextScaled = true
 headerLabel.Parent = header
 
--- Input nama CP manual
+-- Input nama CP
 local nameBox = Instance.new("TextBox")
 nameBox.Size = UDim2.new(1,-20,0,30)
 nameBox.Position = UDim2.new(0,10,0,50)
 nameBox.PlaceholderText = "Masukkan nama CP"
-nameBox.Text = ""
 nameBox.TextColor3 = Color3.fromRGB(255,255,255)
 nameBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
 nameBox.Parent = frame
@@ -163,10 +163,7 @@ saveBtn.MouseButton1Click:Connect(function()
 
     local inputName = nameBox.Text
     if inputName == "" then
-        if #savedPositions==1 then inputName="CP1"
-        elseif #savedPositions==2 then inputName="CP2"
-        elseif #savedPositions==3 then inputName="CP3"
-        else inputName="Summit" end
+        inputName = "CP"..#savedPositions
     end
     table.insert(cpNames,inputName)
     nameBox.Text = ""
@@ -191,7 +188,7 @@ tpBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Drag header mobile
+-- Drag GUI mobile
 local dragging=false
 local dragStart
 local frameStart
