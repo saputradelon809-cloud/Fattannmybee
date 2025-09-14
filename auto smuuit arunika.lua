@@ -1,151 +1,125 @@
---// CHECKPOINT SAVER with File Save
--- by ChatGPT
+--// Arunika CP GUI 2 Mode
+-- Mode: Auto TP cepat & Auto Natural (fly, circle, jump)
 
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
+local humanoid, hrp
 
-local savedPoints = {}
-local saveFile = "checkpoint_data.json" -- nama file penyimpanan
+local function getChar()
+    if player.Character then
+        humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    end
+end
+player.CharacterAdded:Connect(getChar)
+getChar()
 
--- Cek apakah sudah ada file lama
-if isfile and isfile(saveFile) then
-    local data = readfile(saveFile)
-    local success, decoded = pcall(function()
-        return game:GetService("HttpService"):JSONDecode(data)
-    end)
-    if success and typeof(decoded) == "table" then
-        savedPoints = decoded
+-- Daftar CP
+local checkpoints = {
+    Vector3.new(135,144,-175),
+    Vector3.new(326,92,-434),
+    Vector3.new(476,172,-940),
+    Vector3.new(930,136,-627),
+    Vector3.new(923,104,280),
+    Vector3.new(257,328,699),
+}
+
+-- ====== Helpers ======
+local function tweenTo(pos, duration)
+    if hrp then
+        local tween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {CFrame = CFrame.new(pos)})
+        tween:Play()
+        tween.Completed:Wait()
     end
 end
 
--- Fungsi simpan ke file
-local function saveToFile()
-    if writefile then
-        local data = game:GetService("HttpService"):JSONEncode(savedPoints)
-        writefile(saveFile, data)
+local function walkTo(pos)
+    if humanoid then
+        humanoid:MoveTo(pos)
+        humanoid.MoveToFinished:Wait()
     end
 end
 
--- GUI
-local ScreenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-ScreenGui.Name = "CPGui"
-
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 250, 0, 300)
-Frame.Position = UDim2.new(0, 20, 0.5, -150)
-Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-Frame.BorderSizePixel = 2
-
-local Title = Instance.new("TextLabel", Frame)
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(50,50,50)
-Title.Text = "Checkpoint Saver"
-Title.TextColor3 = Color3.fromRGB(255,255,255)
-Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 18
-
-local BtnHolder = Instance.new("Frame", Frame)
-BtnHolder.Size = UDim2.new(1, -20, 0, 90)
-BtnHolder.Position = UDim2.new(0, 10, 0, 40)
-BtnHolder.BackgroundTransparency = 1
-
-local function makeButton(name, posY)
-    local btn = Instance.new("TextButton", BtnHolder)
-    btn.Size = UDim2.new(1, 0, 0, 25)
-    btn.Position = UDim2.new(0, 0, 0, posY)
-    btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
-    btn.Font = Enum.Font.SourceSans
-    btn.TextSize = 16
-    btn.Text = name
-    return btn
-end
-
-local SaveBtn = makeButton("Save Position", 0)
-local TpLastBtn = makeButton("Teleport Last", 30)
-local AutoBtn = makeButton("Auto Teleport All", 60)
-
--- List
-local List = Instance.new("ScrollingFrame", Frame)
-List.Size = UDim2.new(1, -20, 0, 140)
-List.Position = UDim2.new(0, 10, 0, 140)
-List.CanvasSize = UDim2.new(0,0,0,0)
-List.BackgroundColor3 = Color3.fromRGB(35,35,35)
-List.BorderSizePixel = 1
-List.ScrollBarThickness = 6
-
--- Refresh List
-local function refreshList()
-    List:ClearAllChildren()
-    for i, pos in ipairs(savedPoints) do
-        local Item = Instance.new("Frame", List)
-        Item.Size = UDim2.new(1, -10, 0, 30)
-        Item.Position = UDim2.new(0, 5, 0, (i-1)*35)
-        Item.BackgroundColor3 = Color3.fromRGB(45,45,45)
-        
-        local Label = Instance.new("TextLabel", Item)
-        Label.Size = UDim2.new(0.7, 0, 1, 0)
-        Label.BackgroundTransparency = 1
-        Label.Text = "CP "..i.." ("..math.floor(pos.X)..","..math.floor(pos.Y)..","..math.floor(pos.Z)..")"
-        Label.TextColor3 = Color3.fromRGB(255,255,255)
-        Label.Font = Enum.Font.SourceSans
-        Label.TextSize = 14
-        Label.TextXAlignment = Enum.TextXAlignment.Left
-        
-        local TpBtn = Instance.new("TextButton", Item)
-        TpBtn.Size = UDim2.new(0.2, -5, 1, -5)
-        TpBtn.Position = UDim2.new(0.7, 0, 0, 2)
-        TpBtn.Text = "TP"
-        TpBtn.BackgroundColor3 = Color3.fromRGB(70,120,70)
-        TpBtn.TextColor3 = Color3.fromRGB(255,255,255)
-        
-        local DelBtn = Instance.new("TextButton", Item)
-        DelBtn.Size = UDim2.new(0.1, -5, 1, -5)
-        DelBtn.Position = UDim2.new(0.9, 0, 0, 2)
-        DelBtn.Text = "✖"
-        DelBtn.BackgroundColor3 = Color3.fromRGB(120,70,70)
-        DelBtn.TextColor3 = Color3.fromRGB(255,255,255)
-
-        -- Aksi tombol
-        TpBtn.MouseButton1Click:Connect(function()
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                player.Character.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(0,3,0))
-            end
-        end)
-        
-        DelBtn.MouseButton1Click:Connect(function()
-            table.remove(savedPoints, i)
-            saveToFile()
-            refreshList()
-        end)
+local function fastTP(pos)
+    if hrp then
+        hrp.CFrame = CFrame.new(pos + Vector3.new(0,3,0))
     end
-    List.CanvasSize = UDim2.new(0,0,0,#savedPoints*35)
 end
 
--- Tombol utama
-SaveBtn.MouseButton1Click:Connect(function()
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local pos = player.Character.HumanoidRootPart.Position
-        table.insert(savedPoints, pos)
-        saveToFile()
-        refreshList()
+local function processNatural(pos)
+    if not hrp then return end
+    -- 1. Fly atas CP
+    tweenTo(pos + Vector3.new(0, 15, 0), 1.5)
+    task.wait(math.random(1,2))
+    -- 2. Turun
+    tweenTo(pos + Vector3.new(0, 3, 0), 1.2)
+    task.wait(0.5)
+    -- 3. Muter
+    local radius = 4
+    for i=1,3 do
+        local angle = math.rad(i*120)
+        local offset = Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius)
+        walkTo(pos + offset)
+    end
+    -- 4. Masuk CP
+    walkTo(pos)
+    -- 5. Loncat
+    local t0 = tick()
+    while tick() - t0 < 3 do
+        humanoid.Jump = true
+        task.wait(0.5)
+    end
+end
+
+-- ====== GUI ======
+local gui = Instance.new("ScreenGui")
+gui.Name = "CPGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 220, 0, 120)
+frame.Position = UDim2.new(0, 20, 0.4, -60)
+frame.BackgroundColor3 = Color3.fromRGB(35,35,35)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,28)
+title.Text = "Arunika CP Tool"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.BackgroundColor3 = Color3.fromRGB(50,50,50)
+
+local btn1 = Instance.new("TextButton", frame)
+btn1.Size = UDim2.new(1,-20,0,32)
+btn1.Position = UDim2.new(0,10,0,40)
+btn1.Text = "Auto TP Cepat"
+btn1.Font = Enum.Font.Gotham
+btn1.TextSize = 14
+btn1.BackgroundColor3 = Color3.fromRGB(70,70,70)
+btn1.TextColor3 = Color3.fromRGB(255,255,255)
+
+local btn2 = Instance.new("TextButton", frame)
+btn2.Size = UDim2.new(1,-20,0,32)
+btn2.Position = UDim2.new(0,10,0,80)
+btn2.Text = "Auto Natural"
+btn2.Font = Enum.Font.Gotham
+btn2.TextSize = 14
+btn2.BackgroundColor3 = Color3.fromRGB(70,70,70)
+btn2.TextColor3 = Color3.fromRGB(255,255,255)
+
+-- ====== Actions ======
+btn1.MouseButton1Click:Connect(function()
+    for _,pos in ipairs(checkpoints) do
+        fastTP(pos)
+        task.wait(1) -- delay antar CP
     end
 end)
 
-TpLastBtn.MouseButton1Click:Connect(function()
-    if #savedPoints > 0 and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        player.Character.HumanoidRootPart.CFrame = CFrame.new(savedPoints[#savedPoints] + Vector3.new(0,3,0))
+btn2.MouseButton1Click:Connect(function()
+    for _,pos in ipairs(checkpoints) do
+        processNatural(pos)
+        task.wait(math.random(2,4))
     end
 end)
-
-AutoBtn.MouseButton1Click:Connect(function()
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        for i, pos in ipairs(savedPoints) do
-            player.Character.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(0,3,0))
-            task.wait(1)
-        end
-    end
-end)
-
--- Awal: refresh list dari file
-refreshList()
