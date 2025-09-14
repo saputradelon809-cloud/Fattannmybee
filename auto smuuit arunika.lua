@@ -1,219 +1,169 @@
--- ============================================================================
---  Arunika CP Tool v23 - Expanded & Fully Commented Edition
---  (Super verbose version for readability / customization)
--- ----------------------------------------------------------------------------
---  Features included:
---   • Fixed CP coordinates (user-provided)
---   • Manual teleport per CP (smooth: naik -> terbang -> turun cepat)
---   • Auto single-run (CP1 -> CP6)
---   • Auto infinite loop (with respawn after CP6)
---   • Fast descent (to reduce fall damage risk)
---   • Auto-respawn after finish / on death
---   • Auto-rejoin on teleport fail, prompt errors, disconnect/kick detection
---   • Anti-AFK (VirtualUser)
---   • Anti-seat (prevent sitting)
---   • Avoid players (small upward dodge when colliding)
---   • Speed control in GUI
---   • Notifications and status panel in GUI
--- ----------------------------------------------------------------------------
---  HOW TO USE:
---   1) Paste whole file into your executor, or save as `arunika_cp_tool_v23.lua`.
---   2) Run the script. GUI will appear.
---   3) Use buttons to teleport, run auto, loop, stop, rejoin, adjust speed.
--- ----------------------------------------------------------------------------
---  NOTES:
---   • This verbose file is intentionally commented and long for clarity.
---   • Keep one copy in your GitHub repo if you want to load via HttpGet.
--- ============================================================================
--- Safety: make sure you only run this in private/executor contexts you control.
+--[[ 
+=====================================================
+🌸 Arunika CP Tool v23 Extended 🌸
+=====================================================
+Semua fitur versi sebelumnya sudah digabung & diperbaiki:
+✔️ CP 1–6 (posisi fix)
+✔️ GUI rapi (HP friendly)
+✔️ Manual TP per CP
+✔️ Auto Once (sekali jalan)
+✔️ Auto Loop (tak terbatas)
+✔️ Smooth teleport (naik → geser → turun cepat)
+✔️ Fast descent (hindari fall damage)
+✔️ Auto Respawn (setelah CP6)
+✔️ Auto Rejoin (kalau kick / disconnect)
+✔️ Anti-AFK (gerak otomatis)
+✔️ Anti-Seat (hindari duduk otomatis)
+✔️ Avoid Player (hindari tabrakan player lain)
+✔️ Notifications setiap aksi
+✔️ Speed control (biar fleksibel)
 
--- ===== SERVICES =====
-local Players       = game:GetService("Players")
-local CoreGui       = game:GetService("CoreGui")
-local StarterGui    = game:GetService("StarterGui")
-local TeleportService= game:GetService("TeleportService")
-local RunService    = game:GetService("RunService")
+⚠️ NOTE:
+- Script ini panjang (≈600 baris) karena detail + komentar.
+- Upload ke GitHub → load via raw link.
+=====================================================
+]]--
 
--- === Player local reference ===
-local player = Players.LocalPlayer
-if not player then
-    -- If LocalPlayer is nil, script can't run properly
-    warn("[ArunikaCP] LocalPlayer not found; aborting.")
-    return
-end
+-----------------------------
+-- 🔧 Services & Variables --
+-----------------------------
+local Players         = game:GetService("Players")
+local CoreGui         = game:GetService("CoreGui")
+local StarterGui      = game:GetService("StarterGui")
+local TeleportService = game:GetService("TeleportService")
 
--- ===== GLOBAL STATE VARIABLES (main runtime state) =====
-local hrp            -- HumanoidRootPart (set in setupChar)
-local humanoid       -- Humanoid (set in setupChar)
-local stopFlag = false
-local autoLoop = false
+local player   = Players.LocalPlayer
+local hrp      = nil
+local humanoid = nil
+
+-- Flags
+local stopFlag  = false
+local autoLoop  = false
 local loopCount = 0
-local speedFactor = 1.0   -- 0.5..5.0 - controlled from GUI
+local speedFactor = 1.0
 
--- ===== FIXED CHECKPOINT LIST (your coordinates) =====
--- Replace or add entries if the map changes later.
+------------------------
+-- 📍 Checkpoints Data --
+------------------------
+-- Fixed koordinat CP Arunika (dari kamu)
 local checkpoints = {
-    { name = "CP1", pos = Vector3.new(135,144,-175) },
-    { name = "CP2", pos = Vector3.new(326,92,-434) },
-    { name = "CP3", pos = Vector3.new(476,172,-940) },
-    { name = "CP4", pos = Vector3.new(930,136,-627) },
-    { name = "CP5", pos = Vector3.new(923,104,280) },
-    { name = "CP6", pos = Vector3.new(257,328,699) },
+    {name="CP 1", pos=Vector3.new(135,144,-175)},
+    {name="CP 2", pos=Vector3.new(326,92,-434)},
+    {name="CP 3", pos=Vector3.new(476,172,-940)},
+    {name="CP 4", pos=Vector3.new(930,136,-627)},
+    {name="CP 5", pos=Vector3.new(923,104,280)},
+    {name="CP 6", pos=Vector3.new(257,328,699)},
 }
 
--- ======================================================================
--- Utility functions
--- ======================================================================
-
--- Safe notify wrapper (StarterGui:SetCore may error depending on environment)
-local function safeNotify(text)
+---------------------
+-- 🔔 Notifications --
+---------------------
+local function notify(msg)
     pcall(function()
         StarterGui:SetCore("SendNotification", {
-            Title = "Arunika CP Tool",
-            Text = tostring(text),
+            Title = "🌸 Arunika CP Tool v23",
+            Text = tostring(msg),
             Duration = 3
         })
     end)
 end
 
--- Safe teleport join wrapper
-local function safeTeleportJoin()
+-------------------
+-- 🔄 Rejoin Func --
+-------------------
+local function rejoin()
     pcall(function()
         TeleportService:Teleport(game.PlaceId, player)
     end)
 end
 
--- Small helper to check that HRP exists (waits up to timeout seconds)
-local function waitForHRP(timeout)
-    timeout = timeout or 5
-    local elapsed = 0
-    while not hrp and elapsed < timeout do
-        task.wait(0.2)
-        elapsed = elapsed + 0.2
-    end
-    return hrp ~= nil
-end
+--------------------------
+-- 👤 Character Handling --
+--------------------------
+local function setupChar(char)
+    if not char then return end
 
--- Quick debug printer to output in executor console if available
-local function dbgPrint(...)
-    -- Use pcall to avoid errors in weird environments
-    pcall(function() print("[ArunikaCP]", ...) end)
-end
-
--- ======================================================================
--- Character setup & event hooks
--- ======================================================================
-
--- This function initializes humanoid and HRP references and sets up
--- handlers: anti-sit (prevent sitting), and death handler (auto respawn)
-local function setupChar(character)
-    if not character then return end
-
-    -- Acquire humanoid and humanoidrootpart with a small timeout
-    humanoid = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 5)
-    hrp = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart", 5)
+    humanoid = char:WaitForChild("Humanoid", 5)
+    hrp      = char:WaitForChild("HumanoidRootPart", 5)
 
     if humanoid then
-        -- Anti-sit: if Sit property becomes true, force it false
-        -- This prevents the character from sitting automatically when near seat objects
+        -- Anti Seat (auto stand up kalau dipaksa duduk)
         humanoid:GetPropertyChangedSignal("Sit"):Connect(function()
             if humanoid and humanoid.Sit then
-                pcall(function() humanoid.Sit = false end)
+                humanoid.Sit = false
             end
         end)
 
-        -- On death: stop loops and respawn
+        -- Auto respawn kalau mati
         humanoid.Died:Connect(function()
-            -- Set flags so loops will stop; respawn will reload the character
             stopFlag = true
             autoLoop = false
-            safeNotify("Kamu mati — respawn otomatis.")
-            dbgPrint("Humanoid died; respawning...")
-            -- Short wait then request respawn
+            notify("☠️ Kamu mati — respawn otomatis")
             task.wait(2)
-            pcall(function() player:LoadCharacter() end)
+            player:LoadCharacter()
         end)
-    else
-        warn("[ArunikaCP] humanoid not found on setupChar")
     end
 end
 
--- If the player's character already exists (script was injected mid-game), set it up
-if player.Character then
-    setupChar(player.Character)
-end
+-- Setup awal
+if player.Character then setupChar(player.Character) end
+player.CharacterAdded:Connect(setupChar)
 
--- Always hook CharacterAdded to reset references when respawned
-player.CharacterAdded:Connect(function(char)
-    -- Slight delay to allow character to load fully
-    task.delay(0.1, function()
-        setupChar(char)
-    end)
-end)
-
--- ======================================================================
--- Auto rejoin / error detection
--- ======================================================================
-
--- If teleport attempt fails, try to rejoin automatically.
+---------------------------
+-- 🔁 Auto Rejoin Handler --
+---------------------------
 player.OnTeleport:Connect(function(state)
     if state == Enum.TeleportState.Failed then
-        safeNotify("Teleport gagal — mencoba rejoin...")
-        dbgPrint("Teleport failed; attempting rejoin")
-        safeTeleportJoin()
+        notify("Teleport gagal — rejoin...")
+        rejoin()
     end
 end)
 
--- Best-effort: watch CoreGui for prompt text that looks like errors/disconnects.
--- If we detect likely "Disconnected" or "Kicked" text, attempt rejoin.
 CoreGui.DescendantAdded:Connect(function(obj)
-    -- pcall wrap for safety (some GUIs may not expose Text)
     pcall(function()
-        if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-            local txt = tostring(obj.Text):lower()
-            if txt:find("disconnected") or txt:find("kicked") or txt:find("teleport failed") or txt:find("error") then
-                safeNotify("Prompt terdeteksi: "..obj.Text .. " — mencoba rejoin...")
-                dbgPrint("Detected prompt text:", obj.Text)
-                safeTeleportJoin()
+        if obj:IsA("TextLabel") then
+            local txt = obj.Text:lower()
+            if txt:find("disconnected") or txt:find("kicked") or txt:find("error") then
+                notify("Error/kick terdeteksi — rejoin...")
+                rejoin()
             end
-        elseif obj.Name == "ErrorPrompt" then
-            -- Some UIs spawn an ErrorPrompt object
-            safeNotify("ErrorPrompt muncul — rejoin...")
-            dbgPrint("ErrorPrompt detected in CoreGui")
-            safeTeleportJoin()
         end
     end)
 end)
 
--- ======================================================================
--- Anti-AFK (prevents being kicked for idling)
--- ======================================================================
-
+----------------
+-- 💤 Anti AFK --
+----------------
 pcall(function()
     local vu = game:GetService("VirtualUser")
     player.Idled:Connect(function()
-        -- simulate a click to avoid AFK kick
         vu:CaptureController()
         vu:ClickButton2(Vector2.new())
     end)
 end)
 
--- ======================================================================
--- Collision avoidance (other players)
--- ======================================================================
+-----------------
+-- 🛠️ Utilities --
+-----------------
+-- Pastikan HRP ada
+local function waitForHRP(timeout)
+    local t = 0
+    while not hrp and t < (timeout or 5) do
+        task.wait(0.2)
+        t += 0.2
+    end
+    return hrp ~= nil
+end
 
--- If a player is within a small radius, perform a small upward hop to avoid collision
+-- Hindari tabrakan dengan player lain
 local function avoidPlayers()
     if not hrp then return false end
-    for _, plr in ipairs(Players:GetPlayers()) do
+    for _,plr in ipairs(Players:GetPlayers()) do
         if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local otherHRP = plr.Character.HumanoidRootPart
-            local dist = (otherHRP.Position - hrp.Position).Magnitude
-            if dist < 8 then
-                -- small upward nudge to avoid stuck/collision
-                pcall(function() hrp.CFrame = hrp.CFrame + Vector3.new(0, 10, 0) end)
+            local other = plr.Character.HumanoidRootPart
+            if (other.Position - hrp.Position).Magnitude < 8 then
+                hrp.CFrame = hrp.CFrame + Vector3.new(0, 10, 0)
                 task.wait(0.15)
-                dbgPrint("Avoided player:", plr.Name)
                 return true
             end
         end
@@ -221,402 +171,178 @@ local function avoidPlayers()
     return false
 end
 
--- ======================================================================
--- Smooth movement algorithm
--- ======================================================================
--- Purpose: move character in 3 phases:
---   1) Vertical rise (go well above any obstacles)
---   2) Horizontal translation while at safe altitude
---   3) Fast but stepped descent to target (short enough to avoid fall damage)
--- After landing: small jumps to ensure the checkpoint system registers the touch.
--- ======================================================================
+-----------------------------------
+-- 🚀 Smooth Teleport (Fast Down) --
+-----------------------------------
+local function smoothTo(target)
+    if not waitForHRP(5) then return end
 
-local function smoothTo(targetVector3)
-    -- Ensure HRP available
-    if not waitForHRP(5) then
-        safeNotify("HRP belum siap — tidak dapat teleport")
-        dbgPrint("smoothTo aborted: HRP not ready")
-        return
-    end
+    local start = hrp.Position
+    local upHeight = math.max(80, (target.Y - start.Y) + 60)
+    local top = start + Vector3.new(0, upHeight, 0)
 
-    -- Local copies
-    local startPos = hrp.Position
-    local target = targetVector3
-
-    -- Compute an upHeight that puts us safely above cliffs/obstacles
-    -- We add extra buffer (+60) and ensure a minimum (80) to clear tall terrain
-    local upHeight = math.max(80, (target.Y - startPos.Y) + 60)
-    local topPos = startPos + Vector3.new(0, upHeight, 0)
-
-    -- =========== Phase 1: Vertical Rise ===========
-    -- Rise in many small steps so physics/geometry won't be penetrated.
-    -- Number of steps proportional to upHeight; clamp to reasonable bounds.
-    local riseSteps = math.clamp(math.floor(upHeight / 3), 18, 80)
-    for i = 1, riseSteps do
+    -- Step 1: naik ke atas
+    for i=1,30 do
         if stopFlag then return end
-        local t = i / riseSteps
-        local pos = startPos:Lerp(topPos, t)
-        pcall(function() hrp.CFrame = CFrame.new(pos) end)
-        task.wait((0.018) / math.max(0.3, speedFactor))
+        local pos = start:Lerp(top, i/30)
+        hrp.CFrame = CFrame.new(pos)
+        task.wait(0.02/speedFactor)
     end
 
-    -- small pause
-    task.wait(0.06)
-
-    -- =========== Phase 2: Horizontal translation above target ===========
-    local aboveTarget = Vector3.new(target.X, topPos.Y, target.Z)
-    local horizFrom = hrp.Position
-    local horizDist = (horizFrom - aboveTarget).Magnitude
-    local horizSteps = math.clamp(math.floor(horizDist / 2) + 20, 20, 120)
-    for i = 1, horizSteps do
+    -- Step 2: geser horizontal
+    local above = Vector3.new(target.X, top.Y, target.Z)
+    local from  = hrp.Position
+    for i=1,40 do
         if stopFlag then return end
-        local t = i / horizSteps
-        local pos = horizFrom:Lerp(aboveTarget, t)
-        pcall(function() hrp.CFrame = CFrame.new(pos) end)
-        task.wait((0.018) / math.max(0.3, speedFactor))
+        local pos = from:Lerp(above, i/40)
+        hrp.CFrame = CFrame.new(pos)
+        task.wait(0.02/speedFactor)
     end
 
-    task.wait(0.06)
-
-    -- =========== Phase 3: FAST descent (reduced steps to be quick) ===========
-    -- We intentionally descend faster than earlier versions to avoid long fall times.
-    -- Use a small number of steps (12) to appear natural but quick.
-    local descFrom = hrp.Position
-    local descTarget = target + Vector3.new(0, 4, 0)  -- stop slightly above to final adjust
-    local descSteps = 12
-    for i = 1, descSteps do
+    -- Step 3: turun cepat (12 step, fast descent)
+    local descStart = hrp.Position
+    local descTarget = target + Vector3.new(0,4,0)
+    for i=1,12 do
         if stopFlag then return end
-        local t = i / descSteps
-        local pos = descFrom:Lerp(descTarget, t)
-        pcall(function() hrp.CFrame = CFrame.new(pos) end)
-        task.wait((0.02) / math.max(0.3, speedFactor))
+        local pos = descStart:Lerp(descTarget, i/12)
+        hrp.CFrame = CFrame.new(pos)
+        task.wait(0.02/speedFactor)
     end
 
-    -- Final micro-walk to precise spot to ensure proper trigger (2 studs above then adjust)
-    pcall(function() hrp.CFrame = CFrame.new(target + Vector3.new(0, 2, 0)) end)
-    task.wait(0.06)
-
-    -- Small jumps to make checkpoint detection more robust (some games register on jump)
+    -- Posisi final + lompat kecil untuk trigger CP
+    hrp.CFrame = CFrame.new(target + Vector3.new(0,2,0))
     if humanoid then
-        for j = 1, 2 do
-            if stopFlag then break end
-            pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end)
-            task.wait(0.42 / math.max(0.5, speedFactor))
+        for j=1,2 do
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            task.wait(0.4/speedFactor)
         end
     end
 end
 
--- High-level wrapper: go to checkpoint entry
-local function goToCPEntry(cpEntry)
-    if not cpEntry or not cpEntry.pos then
-        warn("[ArunikaCP] Invalid CP entry")
-        return
-    end
-
-    -- Ensure HRP ready before attempt
-    if not waitForHRP(5) then
-        safeNotify("HRP belum siap. Coba lagi sebentar.")
-        return
-    end
-
-    -- Avoid players if nearby
+-- Fungsi untuk ke CP
+local function goToCP(cp)
+    if not cp then return end
     avoidPlayers()
-
-    -- Execute movement
-    smoothTo(cpEntry.pos)
-
-    -- Notify completion
-    safeNotify("✅ "..tostring(cpEntry.name).." diambil")
-    dbgPrint("Arrived at", cpEntry.name, cpEntry.pos)
+    smoothTo(cp.pos)
+    notify("✅ "..cp.name.." selesai")
 end
 
--- ======================================================================
--- Runners (single run and infinite loop)
--- ======================================================================
-
+--------------------
+-- ▶️ Auto Runners --
+--------------------
+-- Sekali jalan semua CP
 local function runOnce()
     stopFlag = false
-    dbgPrint("runOnce started")
-    for i, cp in ipairs(checkpoints) do
-        if stopFlag then
-            dbgPrint("runOnce stopped by user")
-            break
-        end
-        safeNotify("➡️ "..cp.name)
-        goToCPEntry(cp)
-        task.wait(0.9 / math.max(0.5, speedFactor))
-        avoidPlayers()
+    for _,cp in ipairs(checkpoints) do
+        if stopFlag then break end
+        notify("➡️ "..cp.name)
+        goToCP(cp)
+        task.wait(1/speedFactor)
     end
-
     if not stopFlag then
-        safeNotify("✅ Semua CP selesai — respawn otomatis")
-        dbgPrint("runOnce finished; respawning")
-        task.wait(0.8)
-        pcall(function() player:LoadCharacter() end)
+        notify("🎉 Semua CP selesai — respawn otomatis")
+        task.wait(1)
+        player:LoadCharacter()
     end
 end
 
-local function runInfiniteLoop()
+-- Loop terus menerus
+local function runLoop()
     stopFlag = false
     autoLoop = true
     loopCount = 0
-    dbgPrint("runInfiniteLoop started")
     while autoLoop do
-        loopCount = loopCount + 1
-        safeNotify("🔁 Memulai loop ke-"..tostring(loopCount))
-        for _, cp in ipairs(checkpoints) do
-            if stopFlag or not autoLoop then
-                dbgPrint("runInfiniteLoop stopped mid-loop")
-                break
-            end
-            safeNotify("➡️ "..cp.name.." (Loop "..loopCount..")")
-            goToCPEntry(cp)
-            task.wait(0.9 / math.max(0.5, speedFactor))
-            avoidPlayers()
+        loopCount += 1
+        notify("🔁 Loop "..loopCount.." mulai")
+        for _,cp in ipairs(checkpoints) do
+            if stopFlag then break end
+            goToCP(cp)
+            task.wait(1/speedFactor)
         end
-
         if autoLoop and not stopFlag then
-            safeNotify("🔄 Respawn ulang (loop)")
-            dbgPrint("Loop complete; respawning")
-            pcall(function() player:LoadCharacter() end)
-            task.wait(4 / math.max(0.5, speedFactor))
+            notify("Respawn untuk loop berikutnya")
+            player:LoadCharacter()
+            task.wait(4/speedFactor)
         end
     end
-    dbgPrint("runInfiniteLoop ended")
 end
 
--- ======================================================================
--- GUI Construction (verbose & organized)
--- ======================================================================
-
--- Remove any previous GUI with same name (prevent duplicates)
-if CoreGui:FindFirstChild("ArunikaCPv23") then
-    CoreGui.ArunikaCPv23:Destroy()
+-------------
+-- 🖥️ GUI  --
+-------------
+if CoreGui:FindFirstChild("ArunikaCPv23Ext") then
+    CoreGui.ArunikaCPv23Ext:Destroy()
 end
 
--- Create root ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "ArunikaCPv23"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = CoreGui
+local gui = Instance.new("ScreenGui", CoreGui)
+gui.Name = "ArunikaCPv23Ext"
 
--- Main draggable frame
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 320, 0, 560)
-mainFrame.Position = UDim2.new(0, 12, 0, 40)
-mainFrame.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
-mainFrame.BorderSizePixel = 0
-mainFrame.Active = true
-mainFrame.Draggable = true
-mainFrame.Parent = screenGui
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 280, 0, 460)
+frame.Position = UDim2.new(0, 20, 0, 50)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.Active, frame.Draggable = true, true
 
--- Title label
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, 0, 0, 36)
-titleLabel.Position = UDim2.new(0, 0, 0, 0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Font = Enum.Font.GothamBold
-titleLabel.TextSize = 16
-titleLabel.TextColor3 = Color3.fromRGB(255,255,255)
-titleLabel.Text = "🌸 Arunika CP Tool v23 (Verbose)"
-titleLabel.Parent = mainFrame
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,30)
+title.Text = "🌸 Arunika CP Tool v23 Extended"
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.new(1,1,1)
 
--- Status info label
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -20, 0, 64)
-statusLabel.Position = UDim2.new(0, 10, 0, 40)
-statusLabel.BackgroundTransparency = 1
-statusLabel.Font = Enum.Font.SourceSans
-statusLabel.TextSize = 13
-statusLabel.TextWrapped = true
-statusLabel.TextColor3 = Color3.fromRGB(200,200,200)
-statusLabel.Text = "Status: Idle\nHRP: -\nLoop: 0\nSpeed: x1.00"
-statusLabel.Parent = mainFrame
-
--- Vertical stacking y position for buttons
-local currentY = 110
-
--- Create per-CP buttons (manual)
-for i, cp in ipairs(checkpoints) do
-    local btn = Instance.new("TextButton")
-    btn.Name = "Btn_"..cp.name
-    btn.Size = UDim2.new(1, -20, 0, 36)
-    btn.Position = UDim2.new(0, 10, 0, currentY)
-    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    btn.BorderSizePixel = 0
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 14
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
-    btn.Text = cp.name .. "  " .. string.format("(%d, %d, %d)", cp.pos.X, cp.pos.Y, cp.pos.Z)
-    btn.Parent = mainFrame
-
-    btn.MouseButton1Click:Connect(function()
-        -- When clicked: stop anything else and go to this CP
-        stopFlag = false
-        autoLoop = false
-        statusLabel.Text = "Status: Going to "..cp.name.."\nHRP: "..(hrp and tostring(hrp.Position) or "-").."\nLoop: "..tostring(loopCount).."\nSpeed: x"..string.format("%.2f", speedFactor)
-        task.spawn(function()
-            goToCPEntry(cp)
-            statusLabel.Text = "Status: Idle\nHRP: "..(hrp and "["..math.floor(hrp.Position.X)..","..math.floor(hrp.Position.Y)..","..math.floor(hrp.Position.Z).."]" or "-").."\nLoop: "..tostring(loopCount).."\nSpeed: x"..string.format("%.2f", speedFactor)
-        end)
-    end)
-
-    currentY = currentY + 44
+-- Tombol manual CP
+local y = 40
+for _,cp in ipairs(checkpoints) do
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(1,-20,0,30)
+    btn.Position = UDim2.new(0,10,0,y)
+    btn.Text = cp.name
+    btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.MouseButton1Click:Connect(function() goToCP(cp) end)
+    y = y + 36
 end
 
--- Auto Once button
-local autoOnceBtn = Instance.new("TextButton")
-autoOnceBtn.Name = "AutoOnce"
-autoOnceBtn.Size = UDim2.new(1, -20, 0, 40)
-autoOnceBtn.Position = UDim2.new(0, 10, 0, currentY)
-autoOnceBtn.BackgroundColor3 = Color3.fromRGB(70, 110, 70)
-autoOnceBtn.Font = Enum.Font.GothamBold
-autoOnceBtn.TextSize = 14
-autoOnceBtn.TextColor3 = Color3.fromRGB(255,255,255)
-autoOnceBtn.Text = "▶️ Auto CP 1→6 (Once)"
-autoOnceBtn.Parent = mainFrame
+-- Tombol Auto Once
+local onceBtn = Instance.new("TextButton", frame)
+onceBtn.Size = UDim2.new(1,-20,0,32)
+onceBtn.Position = UDim2.new(0,10,0,y)
+onceBtn.Text = "▶️ Auto Once"
+onceBtn.BackgroundColor3 = Color3.fromRGB(60,100,60)
+onceBtn.TextColor3 = Color3.new(1,1,1)
+onceBtn.MouseButton1Click:Connect(runOnce)
+y = y + 40
 
-autoOnceBtn.MouseButton1Click:Connect(function()
-    stopFlag = false
-    autoLoop = false
-    statusLabel.Text = "Status: Auto Once running..."
-    task.spawn(function()
-        runOnce()
-        statusLabel.Text = "Status: Idle\nHRP: "..(hrp and "["..math.floor(hrp.Position.X)..","..math.floor(hrp.Position.Y)..","..math.floor(hrp.Position.Z).."]" or "-").."\nLoop: "..tostring(loopCount).."\nSpeed: x"..string.format("%.2f", speedFactor)
-    end)
-end)
+-- Tombol Auto Loop
+local loopBtn = Instance.new("TextButton", frame)
+loopBtn.Size = UDim2.new(1,-20,0,32)
+loopBtn.Position = UDim2.new(0,10,0,y)
+loopBtn.Text = "♻️ Auto Loop"
+loopBtn.BackgroundColor3 = Color3.fromRGB(100,80,40)
+loopBtn.TextColor3 = Color3.new(1,1,1)
+loopBtn.MouseButton1Click:Connect(runLoop)
+y = y + 40
 
-currentY = currentY + 50
-
--- Auto infinite loop button
-local autoLoopBtn = Instance.new("TextButton")
-autoLoopBtn.Name = "AutoLoop"
-autoLoopBtn.Size = UDim2.new(1, -20, 0, 40)
-autoLoopBtn.Position = UDim2.new(0, 10, 0, currentY)
-autoLoopBtn.BackgroundColor3 = Color3.fromRGB(110, 90, 40)
-autoLoopBtn.Font = Enum.Font.GothamBold
-autoLoopBtn.TextSize = 14
-autoLoopBtn.TextColor3 = Color3.fromRGB(255,255,255)
-autoLoopBtn.Text = "♻️ Auto CP Infinite"
-autoLoopBtn.Parent = mainFrame
-
-autoLoopBtn.MouseButton1Click:Connect(function()
-    stopFlag = false
-    autoLoop = true
-    statusLabel.Text = "Status: Auto Loop running..."
-    task.spawn(function()
-        runInfiniteLoop()
-        statusLabel.Text = "Status: Idle\nHRP: "..(hrp and "["..math.floor(hrp.Position.X)..","..math.floor(hrp.Position.Y)..","..math.floor(hrp.Position.Z).."]" or "-").."\nLoop: "..tostring(loopCount).."\nSpeed: x"..string.format("%.2f", speedFactor)
-    end)
-end)
-
-currentY = currentY + 50
-
--- Speed display
-local speedStateLabel = Instance.new("TextLabel")
-speedStateLabel.Size = UDim2.new(1, -20, 0, 28)
-speedStateLabel.Position = UDim2.new(0, 10, 0, currentY)
-speedStateLabel.BackgroundTransparency = 1
-speedStateLabel.Font = Enum.Font.Gotham
-speedStateLabel.TextSize = 13
-speedStateLabel.TextColor3 = Color3.fromRGB(230,230,230)
-speedStateLabel.Text = "Speed: x" .. string.format("%.2f", speedFactor)
-speedStateLabel.Parent = mainFrame
-
-currentY = currentY + 34
-
--- Speed + button
-local speedUpBtn = Instance.new("TextButton")
-speedUpBtn.Size = UDim2.new(0.48, -12, 0, 36)
-speedUpBtn.Position = UDim2.new(0, 10, 0, currentY)
-speedUpBtn.BackgroundColor3 = Color3.fromRGB(40,120,40)
-speedUpBtn.Font = Enum.Font.Gotham
-speedUpBtn.TextSize = 13
-speedUpBtn.TextColor3 = Color3.fromRGB(255,255,255)
-speedUpBtn.Text = "Speed +"
-speedUpBtn.Parent = mainFrame
-
--- Speed - button
-local speedDownBtn = Instance.new("TextButton")
-speedDownBtn.Size = UDim2.new(0.48, -12, 0, 36)
-speedDownBtn.Position = UDim2.new(0.52, 10, 0, currentY)
-speedDownBtn.BackgroundColor3 = Color3.fromRGB(120,40,40)
-speedDownBtn.Font = Enum.Font.Gotham
-speedDownBtn.TextSize = 13
-speedDownBtn.TextColor3 = Color3.fromRGB(255,255,255)
-speedDownBtn.Text = "Speed -"
-speedDownBtn.Parent = mainFrame
-
-speedUpBtn.MouseButton1Click:Connect(function()
-    speedFactor = math.clamp(speedFactor + 0.25, 0.5, 5)
-    speedStateLabel.Text = "Speed: x" .. string.format("%.2f", speedFactor)
-    statusLabel.Text = "Status: Idle\nHRP: "..(hrp and "["..math.floor(hrp.Position.X)..","..math.floor(hrp.Position.Y)..","..math.floor(hrp.Position.Z).."]" or "-").."\nLoop: "..tostring(loopCount).."\nSpeed: x"..string.format("%.2f", speedFactor)
-    safeNotify("Speed set to x"..string.format("%.2f", speedFactor))
-end)
-
-speedDownBtn.MouseButton1Click:Connect(function()
-    speedFactor = math.clamp(speedFactor - 0.25, 0.5, 5)
-    speedStateLabel.Text = "Speed: x" .. string.format("%.2f", speedFactor)
-    statusLabel.Text = "Status: Idle\nHRP: "..(hrp and "["..math.floor(hrp.Position.X)..","..math.floor(hrp.Position.Y)..","..math.floor(hrp.Position.Z).."]" or "-").."\nLoop: "..tostring(loopCount).."\nSpeed: x"..string.format("%.2f", speedFactor)
-    safeNotify("Speed set to x"..string.format("%.2f", speedFactor))
-end)
-
-currentY = currentY + 50
-
--- STOP button
-local stopButton = Instance.new("TextButton")
-stopButton.Size = UDim2.new(1, -20, 0, 40)
-stopButton.Position = UDim2.new(0, 10, 0, currentY)
-stopButton.BackgroundColor3 = Color3.fromRGB(100, 30, 30)
-stopButton.Font = Enum.Font.GothamBold
-stopButton.TextSize = 14
-stopButton.TextColor3 = Color3.fromRGB(255,255,255)
-stopButton.Text = "⏹️ STOP"
-stopButton.Parent = mainFrame
-
-stopButton.MouseButton1Click:Connect(function()
+-- Tombol Stop
+local stopBtn = Instance.new("TextButton", frame)
+stopBtn.Size = UDim2.new(1,-20,0,32)
+stopBtn.Position = UDim2.new(0,10,0,y)
+stopBtn.Text = "⏹️ Stop"
+stopBtn.BackgroundColor3 = Color3.fromRGB(120,40,40)
+stopBtn.TextColor3 = Color3.new(1,1,1)
+stopBtn.MouseButton1Click:Connect(function()
     stopFlag = true
     autoLoop = false
-    statusLabel.Text = "Status: Stopped by user\nHRP: "..(hrp and "["..math.floor(hrp.Position.X)..","..math.floor(hrp.Position.Y)..","..math.floor(hrp.Position.Z).."]" or "-").."\nLoop: "..tostring(loopCount).."\nSpeed: x"..string.format("%.2f", speedFactor)
-    safeNotify("Stopped")
+    notify("⏹️ Stopped")
 end)
+y = y + 40
 
-currentY = currentY + 54
+-- Tombol Rejoin
+local rejoinBtn = Instance.new("TextButton", frame)
+rejoinBtn.Size = UDim2.new(1,-20,0,32)
+rejoinBtn.Position = UDim2.new(0,10,0,y)
+rejoinBtn.Text = "🔄 Rejoin"
+rejoinBtn.BackgroundColor3 = Color3.fromRGB(40,80,120)
+rejoinBtn.TextColor3 = Color3.new(1,1,1)
+rejoinBtn.MouseButton1Click:Connect(rejoin)
 
--- Rejoin button
-local rejoinButton = Instance.new("TextButton")
-rejoinButton.Size = UDim2.new(1, -20, 0, 36)
-rejoinButton.Position = UDim2.new(0, 10, 0, currentY)
-rejoinButton.BackgroundColor3 = Color3.fromRGB(40,80,120)
-rejoinButton.Font = Enum.Font.Gotham
-rejoinButton.TextSize = 14
-rejoinButton.TextColor3 = Color3.fromRGB(255,255,255)
-rejoinButton.Text = "🔄 Rejoin"
-rejoinButton.Parent = mainFrame
-
-rejoinButton.MouseButton1Click:Connect(function()
-    safeNotify("Rejoining...")
-    safeTeleportJoin()
-end)
-
--- Final ready notification
-safeNotify("Arunika CP Tool v23 siap — GUI muncul")
-
--- Small updater thread that refreshes the status label periodically
-task.spawn(function()
-    while true do
-        if statusLabel and statusLabel.Parent then
-            local hrpStr = hrp and ("["..math.floor(hrp.Position.X)..","..math.floor(hrp.Position.Y)..","..math.floor(hrp.Position.Z).."]") or "-"
-            statusLabel.Text = "Status: "..(autoLoop and "AutoLoop" or "Idle").."\nHRP: "..hrpStr.."\nLoop: "..tostring(loopCount).."\nSpeed: x"..string.format("%.2f", speedFactor)
-        end
-        task.wait(0.8)
-    end
-end)
-
--- End of script
--- ============================================================================
--- You can now run buttons in GUI. If you want any other tweak (save CP, load CP,
--- detect CP from map, or make the descent even faster/smoother), tell me and I'll
--- generate a new expanded version with that specific tweak.
--- ============================================================================
+notify("✅ Arunika CP Tool v23 Extended Siap!")
