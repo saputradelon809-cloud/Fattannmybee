@@ -1,135 +1,92 @@
--- Gunung Gataulah Teleport GUI (StarterGui LocalScript)
+-- AutoSummitDelta.lua
+-- Gunakan hanya di game Roblox milikmu sendiri.
+-- Script gabungan (server + client trigger)
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TeleportRequest = ReplicatedStorage:WaitForChild("TeleportRequest")
-local GetCheckpoint = ReplicatedStorage:WaitForChild("GetCheckpoint")
+-- ======= SERVER SIDE =======
+if game:GetService("RunService"):IsServer() then
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local TweenService = game:GetService("TweenService")
 
-local player = game.Players.LocalPlayer
-
--- === GUI ===
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TeleportGui"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = player:WaitForChild("PlayerGui")
-
--- frame utama
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 260, 0, 320)
-mainFrame.Position = UDim2.new(0, 20, 0.5, -160)
-mainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-mainFrame.Parent = screenGui
-
--- tab frame
-local tabFrame = Instance.new("Frame")
-tabFrame.Size = UDim2.new(1, 0, 0, 35)
-tabFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-tabFrame.Parent = mainFrame
-
-local tabLayout = Instance.new("UIListLayout")
-tabLayout.FillDirection = Enum.FillDirection.Horizontal
-tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-tabLayout.Parent = tabFrame
-
--- content
-local contentFrame = Instance.new("Frame")
-contentFrame.Size = UDim2.new(1, 0, 1, -35)
-contentFrame.Position = UDim2.new(0, 0, 0, 35)
-contentFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-contentFrame.Parent = mainFrame
-
--- fungsi tab
-local function createTab(name)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 120, 1, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Text = name
-    btn.Parent = tabFrame
-
-    local page = Instance.new("Frame")
-    page.Size = UDim2.new(1, 0, 1, 0)
-    page.BackgroundTransparency = 1
-    page.Visible = false
-    page.Parent = contentFrame
-
-    local layout = Instance.new("UIListLayout")
-    layout.Parent = page
-    layout.Padding = UDim.new(0, 5)
-
-    btn.MouseButton1Click:Connect(function()
-        for _, child in ipairs(contentFrame:GetChildren()) do
-            if child:IsA("Frame") then child.Visible = false end
-        end
-        page.Visible = true
-    end)
-
-    return page
-end
-
--- daftar titik
-local POINT_NAMES = {
-    "Safezone A",
-    "Pos 1",
-    "Pos 2",
-    "Pos 3",
-    "Pos 4",
-    "Safezone B",
-    "Pos 5",
-    "Pos 6",
-    "Summit",
-}
-
--- helper button
-local function makeButton(parent, name, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 30)
-    btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Text = name
-    btn.Parent = parent
-    btn.MouseButton1Click:Connect(callback)
-    return btn
-end
-
--- === TAB MANUAL ===
-local manualPage = createTab("Manual")
-makeButton(manualPage, "Kembali ke CP Terakhir", function()
-    local vec = GetCheckpoint:InvokeServer()
-    if vec then
-        TeleportRequest:FireServer(player:GetAttribute("CheckpointName"))
+    -- RemoteEvent
+    local folder = ReplicatedStorage:FindFirstChild("AutoSummit") 
+    if not folder then
+        folder = Instance.new("Folder")
+        folder.Name = "AutoSummit"
+        folder.Parent = ReplicatedStorage
     end
-end)
+    local requestEvent = folder:FindFirstChild("Request") or Instance.new("RemoteEvent", folder)
+    requestEvent.Name = "Request"
 
-for _, name in ipairs(POINT_NAMES) do
-    makeButton(manualPage, "Pergi ke "..name, function()
-        TeleportRequest:FireServer(name)
-    end)
-end
+    -- KOORDINAT
+    local checkpoints = {
+        Vector3.new(528, 153, -181), -- safezone 1
+        Vector3.new(719, 113, 233),  -- pos 1
+        Vector3.new(736, 121, 585),  -- pos 2
+        Vector3.new(768, 299, 731),  -- pos 3
+        Vector3.new(892, 329, 1072), -- pos 4
+        Vector3.new(1523, 345, 1085),-- safezone 2
+        Vector3.new(1473, 421, 500), -- pos 5
+        Vector3.new(1509, 421, 56),  -- pos 6
+        Vector3.new(2149, 621, 187)  -- summit
+    }
 
--- === TAB AUTO ===
-local autoPage = createTab("Auto")
-local running = false
+    local tweenTimePerSegment = 0.8
+    local waitAtCheckpoint = 2
+    local distanceThreshold = 6
 
-local function autoRoute(untilIndex)
-    if running then return end
-    running = true
-    for i = 1, untilIndex do
-        if not running then break end
-        TeleportRequest:FireServer(POINT_NAMES[i])
-        task.wait(3)
+    local function getHRP(player)
+        local char = player.Character or player.CharacterAdded:Wait()
+        return char:FindFirstChild("HumanoidRootPart")
     end
-    running = false
-end
 
-for i, name in ipairs(POINT_NAMES) do
-    makeButton(autoPage, "Auto sampai "..name, function()
-        if not running then
-            task.spawn(function() autoRoute(i) end)
-        else
-            running = false
+    local function tweenTo(hrp, pos)
+        local targetCFrame = CFrame.new(pos) * CFrame.new(0, 3, 0)
+        local info = TweenInfo.new(tweenTimePerSegment, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(hrp, info, {CFrame = targetCFrame})
+        tween:Play()
+        tween.Completed:Wait()
+    end
+
+    requestEvent.OnServerEvent:Connect(function(player, action)
+        if action ~= "start" then return end
+        local hrp = getHRP(player)
+        if not hrp then return end
+
+        for i, pos in ipairs(checkpoints) do
+            tweenTo(hrp, pos)
+            local tries = 0
+            while hrp and (hrp.Position - pos).Magnitude > distanceThreshold and tries < 6 do
+                task.wait(0.25)
+                tries += 1
+            end
+            task.wait(waitAtCheckpoint)
+            if i == #checkpoints then
+                player:LoadCharacter() -- respawn saat summit
+            end
         end
     end)
+
+    print("[AutoSummitDelta] Server ready")
 end
 
--- default buka manual
-manualPage.Visible = true
+-- ======= CLIENT SIDE =======
+if game:GetService("RunService"):IsClient() then
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local UserInputService = game:GetService("UserInputService")
+    local folder = ReplicatedStorage:WaitForChild("AutoSummit")
+    local requestEvent = folder:WaitForChild("Request")
+
+    local function requestStart()
+        requestEvent:FireServer("start")
+    end
+
+    -- Tekan R untuk mulai
+    UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.R then
+            requestStart()
+        end
+    end)
+
+    print("[AutoSummitDelta] Client ready - tekan R untuk AutoSummit")
+end
