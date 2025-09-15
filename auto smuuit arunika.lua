@@ -1,137 +1,135 @@
--- Arunika CP Tool v26 (Anti Detect + Slow Fall)
--- Semua fitur: Auto CP, Slow Teleport, Respawn, Rejoin, Anti AFK, Anti Kursi
+-- Gunung Gataulah Teleport GUI (StarterGui LocalScript)
 
-local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local VirtualUser = game:GetService("VirtualUser")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportRequest = ReplicatedStorage:WaitForChild("TeleportRequest")
+local GetCheckpoint = ReplicatedStorage:WaitForChild("GetCheckpoint")
 
-local player = Players.LocalPlayer
-local hrp
+local player = game.Players.LocalPlayer
 
--- Safe HRP fetch
-local function getHRP()
-    local char = player.Character or player.CharacterAdded:Wait()
-    return char:WaitForChild("HumanoidRootPart",10)
-end
-hrp = getHRP()
+-- === GUI ===
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TeleportGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Anti AFK
-player.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-end)
+-- frame utama
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 260, 0, 320)
+mainFrame.Position = UDim2.new(0, 20, 0.5, -160)
+mainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+mainFrame.Parent = screenGui
 
--- Anti kursi (hindari duduk otomatis)
-RunService.Stepped:Connect(function()
-    if hrp and hrp.Parent:FindFirstChildOfClass("Humanoid") then
-        hrp.Parent:FindFirstChildOfClass("Humanoid").Sit = false
-    end
-end)
+-- tab frame
+local tabFrame = Instance.new("Frame")
+tabFrame.Size = UDim2.new(1, 0, 0, 35)
+tabFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+tabFrame.Parent = mainFrame
 
--- CP data
-local checkpoints = {
-    Vector3.new(135,144,-175),
-    Vector3.new(326,92,-434),
-    Vector3.new(476,172,-940),
-    Vector3.new(930,136,-627),
-    Vector3.new(923,104,280),
-    Vector3.new(257,328,699),
-}
-local currentCP = 1
-local autoFarm = false
+local tabLayout = Instance.new("UIListLayout")
+tabLayout.FillDirection = Enum.FillDirection.Horizontal
+tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+tabLayout.Parent = tabFrame
 
--- Smooth & Natural Move (anti detect + slow fall)
-local function moveTo(targetPos)
-    hrp = getHRP()
-    if not hrp then return end
+-- content
+local contentFrame = Instance.new("Frame")
+contentFrame.Size = UDim2.new(1, 0, 1, -35)
+contentFrame.Position = UDim2.new(0, 0, 0, 35)
+contentFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+contentFrame.Parent = mainFrame
 
-    -- 1. Naik pelan
-    local upGoal = {CFrame = CFrame.new(hrp.Position + Vector3.new(0, math.random(60,90), 0))}
-    TweenService:Create(hrp, TweenInfo.new(2.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), upGoal):Play()
-    task.wait(2.6)
+-- fungsi tab
+local function createTab(name)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 120, 1, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = name
+    btn.Parent = tabFrame
 
-    -- 2. Gerak horizontal
-    local horizGoal = {CFrame = CFrame.new(Vector3.new(targetPos.X, hrp.Position.Y, targetPos.Z))}
-    TweenService:Create(hrp, TweenInfo.new(math.random(3,4), Enum.EasingStyle.Linear), horizGoal):Play()
-    task.wait(3.5)
+    local page = Instance.new("Frame")
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.Visible = false
+    page.Parent = contentFrame
 
-    -- 3. Turun super pelan (slow fall)
-    local downGoal = {CFrame = CFrame.new(targetPos + Vector3.new(0,7,0))}
-    TweenService:Create(hrp, TweenInfo.new(5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), downGoal):Play()
-    task.wait(5.2)
+    local layout = Instance.new("UIListLayout")
+    layout.Parent = page
+    layout.Padding = UDim.new(0, 5)
 
-    -- 4. Muter2 + lompat (biar kelihatan player manual ambil CP)
-    for j=1,4 do
-        local offset = Vector3.new(math.sin(tick()*3+j),0,math.cos(tick()*3+j))*2
-        hrp.CFrame = CFrame.new(targetPos+offset)
-        hrp.Velocity = Vector3.new(0,20,0)
-        task.wait(1 + math.random()*0.4)
-    end
-end
-
--- Go to CP
-local function goToCP(i)
-    if not checkpoints[i] then return end
-    currentCP = i
-    moveTo(checkpoints[i])
-    if i == #checkpoints then
-        task.wait(2)
-        player:LoadCharacter() -- auto respawn setelah CP6
-    end
-end
-
--- Auto mode
-local function autoCP()
-    while autoFarm do
-        goToCP(currentCP)
-        currentCP += 1
-        if currentCP > #checkpoints then
-            currentCP = 1
+    btn.MouseButton1Click:Connect(function()
+        for _, child in ipairs(contentFrame:GetChildren()) do
+            if child:IsA("Frame") then child.Visible = false end
         end
+        page.Visible = true
+    end)
+
+    return page
+end
+
+-- daftar titik
+local POINT_NAMES = {
+    "Safezone A",
+    "Pos 1",
+    "Pos 2",
+    "Pos 3",
+    "Pos 4",
+    "Safezone B",
+    "Pos 5",
+    "Pos 6",
+    "Summit",
+}
+
+-- helper button
+local function makeButton(parent, name, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 30)
+    btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = name
+    btn.Parent = parent
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+-- === TAB MANUAL ===
+local manualPage = createTab("Manual")
+makeButton(manualPage, "Kembali ke CP Terakhir", function()
+    local vec = GetCheckpoint:InvokeServer()
+    if vec then
+        TeleportRequest:FireServer(player:GetAttribute("CheckpointName"))
+    end
+end)
+
+for _, name in ipairs(POINT_NAMES) do
+    makeButton(manualPage, "Pergi ke "..name, function()
+        TeleportRequest:FireServer(name)
+    end)
+end
+
+-- === TAB AUTO ===
+local autoPage = createTab("Auto")
+local running = false
+
+local function autoRoute(untilIndex)
+    if running then return end
+    running = true
+    for i = 1, untilIndex do
+        if not running then break end
+        TeleportRequest:FireServer(POINT_NAMES[i])
         task.wait(3)
     end
+    running = false
 end
 
--- GUI (Delta friendly)
-local gui = Instance.new("ScreenGui")
-gui.Parent = game:GetService("CoreGui")
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,200,0,350)
-frame.Position = UDim2.new(0.05,0,0.2,0)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-frame.Active = true
-frame.Draggable = true
-
-local layout = Instance.new("UIListLayout", frame)
-layout.Padding = UDim.new(0,5)
-
-local function makeButton(txt, func)
-    local b = Instance.new("TextButton", frame)
-    b.Size = UDim2.new(1,-10,0,35)
-    b.Text = txt
-    b.BackgroundColor3 = Color3.fromRGB(50,50,50)
-    b.TextColor3 = Color3.fromRGB(255,255,255)
-    b.MouseButton1Click:Connect(func)
+for i, name in ipairs(POINT_NAMES) do
+    makeButton(autoPage, "Auto sampai "..name, function()
+        if not running then
+            task.spawn(function() autoRoute(i) end)
+        else
+            running = false
+        end
+    end)
 end
 
-makeButton("Toggle Auto CP", function()
-    autoFarm = not autoFarm
-    if autoFarm then
-        task.spawn(autoCP)
-    end
-end)
-
-for i=1,#checkpoints do
-    makeButton("Go to CP"..i, function() goToCP(i) end)
-end
-
--- Auto rejoin kalau ke-kick
-player.OnTeleport:Connect(function(State)
-    if State == Enum.TeleportState.Failed then
-        TeleportService:Teleport(game.PlaceId, player)
-    end
-end)
+-- default buka manual
+manualPage.Visible = true
