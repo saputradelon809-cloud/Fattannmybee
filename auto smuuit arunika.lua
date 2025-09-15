@@ -1,6 +1,6 @@
--- AutoSummitDelta.lua
+-- AutoSummitDelta_Mobile.lua
 -- Gunakan hanya di game Roblox milikmu sendiri.
--- Script gabungan (server + client trigger)
+-- Server + Client + GUI Mobile
 
 -- ======= SERVER SIDE =======
 if game:GetService("RunService"):IsServer() then
@@ -17,7 +17,7 @@ if game:GetService("RunService"):IsServer() then
     local requestEvent = folder:FindFirstChild("Request") or Instance.new("RemoteEvent", folder)
     requestEvent.Name = "Request"
 
-    -- KOORDINAT
+    -- KOORDINAT DELTA
     local checkpoints = {
         Vector3.new(528, 153, -181), -- safezone 1
         Vector3.new(719, 113, 233),  -- pos 1
@@ -69,24 +69,37 @@ if game:GetService("RunService"):IsServer() then
     print("[AutoSummitDelta] Server ready")
 end
 
--- ======= CLIENT SIDE =======
+-- ======= CLIENT SIDE + GUI MOBILE =======
 if game:GetService("RunService"):IsClient() then
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local UserInputService = game:GetService("UserInputService")
     local folder = ReplicatedStorage:WaitForChild("AutoSummit")
     local requestEvent = folder:WaitForChild("Request")
 
-    local function requestStart()
-        requestEvent:FireServer("start")
-    end
+    -- Buat GUI Mobile
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "AutoSummitGUI"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = game:GetService("CoreGui")
 
-    -- Tekan R untuk mulai
-    UserInputService.InputBegan:Connect(function(input, processed)
-        if processed then return end
-        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.R then
-            requestStart()
-        end
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 160, 0, 50) -- lebih besar untuk mobile
+    button.Position = UDim2.new(0.75, 0, 0.85, 0) -- kanan bawah
+    button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.TextScaled = true
+    button.Text = "🚀 Auto Summit"
+    button.Parent = screenGui
+    button.Visible = true
+    button.AutoButtonColor = true
+    button.BorderSizePixel = 2
+
+    -- efek klik
+    button.MouseButton1Click:Connect(function()
+        button.Text = "⏳ Running..."
+        requestEvent:FireServer("start")
+        task.wait(2)
+        button.Text = "🚀 Auto Summit"
     end)
 
-    print("[AutoSummitDelta] Client ready - tekan R untuk AutoSummit")
+    print("[AutoSummitDelta] Client ready - Mobile GUI dibuat")
 end
