@@ -1,7 +1,8 @@
 -- AutoSummitDelta_Teleport.lua
--- Auto Summit teleport cepat + draggable GUI (Delta Ready)
+-- Auto Summit teleport cepat + draggable GUI (Delta Mobile Ready)
 
 local player = game.Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
 
 -- === SETTINGS ===
 local checkpoints = {
@@ -51,16 +52,44 @@ player.CharacterAdded:Connect(function()
 end)
 
 -- === GUI ===
-local gui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+local gui = Instance.new("ScreenGui")
 gui.Name = "SummitTPGUI"
 gui.ResetOnSpawn = false
+gui.Parent = game:GetService("CoreGui")
 
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0, 180, 0, 100)
 frame.Position = UDim2.new(0.7, 0, 0.8, 0)
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-frame.Active = true
-frame.Draggable = true -- 🔥 bisa geser dengan touch / mouse
+
+-- draggable manual (touch/mouse friendly)
+local dragging, dragInput, dragStart, startPos
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+frame.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - dragStart
+		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+			startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
 
 local autoBtn = Instance.new("TextButton", frame)
 autoBtn.Size = UDim2.new(1, -10, 0, 40)
@@ -90,4 +119,4 @@ loopBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-print("[AutoSummitDelta] Auto teleport cepat aktif + GUI draggable.")
+print("[AutoSummitDelta] ✅ Auto teleport cepat aktif + GUI draggable (Mobile Ready).")
