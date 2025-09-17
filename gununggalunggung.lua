@@ -4,15 +4,15 @@ local player = Players.LocalPlayer
 
 -- Daftar koordinat CP (Vector3)
 local checkpoints = {
-Vector3(-715, 176, 412)
-2. Vector3(-928, 167, 100)
-3. Vector3(-1237, 151, -55)
-4. Vector3(-1357, 165, -824)
-5. Vector3(-1315, 228, -993)
-6. Vector3(-1363, 373, -1488)
-7. Vector3(-1323, 257, -2251)
-8. Vector3(-1239, 223, -2652)
-9. Vector3(-1243, 470, -3392) -- Summit
+    Vector3.new(-715, 176, 412),
+    Vector3.new(-928, 167, 100),
+    Vector3.new(-1237, 151, -55),
+    Vector3.new(-1357, 165, -824),
+    Vector3.new(-1315, 228, -993),
+    Vector3.new(-1363, 373, -1488),
+    Vector3.new(-1323, 257, -2251),
+    Vector3.new(-1239, 223, -2652),
+    Vector3.new(-1243, 470, -3392) -- Summit
 }
 
 local running = false
@@ -55,47 +55,53 @@ local function autoTP(statusLabel)
 end
 
 -- GUI
-local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+local gui = Instance.new("ScreenGui")
 gui.Name = "FattanHub"
 gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
 
-local frame = Instance.new("Frame", gui)
+local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 220, 0, 120)
 frame.Position = UDim2.new(0.05, 0, 0.3, 0)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Active = true
 frame.Draggable = true
+frame.Parent = gui
 
-local title = Instance.new("TextLabel", frame)
+local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 title.Text = "🏆 Fattan Hub"
 title.TextScaled = true
 title.TextColor3 = Color3.fromRGB(255, 215, 0)
+title.Parent = frame
 
-local status = Instance.new("TextLabel", frame)
+local status = Instance.new("TextLabel")
 status.Size = UDim2.new(1, -10, 0, 25)
 status.Position = UDim2.new(0, 5, 0, 35)
 status.BackgroundTransparency = 1
 status.Text = "Status: Idle"
 status.TextScaled = true
 status.TextColor3 = Color3.fromRGB(255,255,255)
+status.Parent = frame
 
-local startBtn = Instance.new("TextButton", frame)
+local startBtn = Instance.new("TextButton")
 startBtn.Size = UDim2.new(0.5, -5, 0, 40)
 startBtn.Position = UDim2.new(0, 5, 1, -45)
 startBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
 startBtn.Text = "START"
 startBtn.TextScaled = true
 startBtn.TextColor3 = Color3.new(1,1,1)
+startBtn.Parent = frame
 
-local stopBtn = Instance.new("TextButton", frame)
+local stopBtn = Instance.new("TextButton")
 stopBtn.Size = UDim2.new(0.5, -5, 0, 40)
 stopBtn.Position = UDim2.new(0.5, 0, 1, -45)
 stopBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 stopBtn.Text = "STOP"
 stopBtn.TextScaled = true
 stopBtn.TextColor3 = Color3.new(1,1,1)
+stopBtn.Parent = frame
 
 startBtn.MouseButton1Click:Connect(function()
     if not running then
