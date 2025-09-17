@@ -4,15 +4,15 @@ local player = Players.LocalPlayer
 
 -- Daftar koordinat CP (Vector3)
 local checkpoints = {
-    Vector3.new(-498, 112, 359),
-    Vector3.new(-716, 176, 414),
-    Vector3.new(-930, 167, 100),
-    Vector3.new(-1239, 151, -55),
-    Vector3.new(-1358, 165, -826),
-    Vector3.new(-1313, 228, -992),
-    Vector3.new(-1364, 373, -1486),
-    Vector3.new(-1324, 257, -2251),
-    Vector3.new(-1241, 471, -3393) -- Summit
+Vector3(-715, 176, 412)
+2. Vector3(-928, 167, 100)
+3. Vector3(-1237, 151, -55)
+4. Vector3(-1357, 165, -824)
+5. Vector3(-1315, 228, -993)
+6. Vector3(-1363, 373, -1488)
+7. Vector3(-1323, 257, -2251)
+8. Vector3(-1239, 223, -2652)
+9. Vector3(-1243, 470, -3392) -- Summit
 }
 
 local running = false
