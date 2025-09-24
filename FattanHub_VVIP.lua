@@ -500,21 +500,43 @@ Players.PlayerAdded:Connect(updateTrolxList)
 Players.PlayerRemoving:Connect(updateTrolxList)
 updateTrolxList()
 
--- Part Delete / Resize
+-- Part Tools (Resize + Delete)
 local Mouse=LocalPlayer:GetMouse()
 local selectedPart=nil
 local selectionBox=nil
+
+-- Resize pakai Handles
+local function addHandles(part)
+    local handles = Instance.new("Handles")
+    handles.Adornee = part
+    handles.Style = Enum.HandlesStyle.Resize
+    handles.Parent = part
+
+    handles.MouseDrag:Connect(function(face, dist)
+        local size = part.Size
+        if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
+            size = size + Vector3.new(0, dist, 0)
+        elseif face == Enum.NormalId.Front or face == Enum.NormalId.Back then
+            size = size + Vector3.new(0, 0, dist)
+        elseif face == Enum.NormalId.Right or face == Enum.NormalId.Left then
+            size = size + Vector3.new(dist, 0, 0)
+        end
+        part.Size = size
+    end)
+end
 
 Mouse.Button1Down:Connect(function()
     if Mouse.Target and Mouse.Target:IsA("BasePart") then
         selectedPart=Mouse.Target
         if not selectionBox then
             selectionBox=Instance.new("SelectionBox")
-            selectionBox.Color3=Color3.fromRGB(255,0,0)
+            selectionBox.Color3=Color3.fromRGB(0,255,0)
             selectionBox.Parent=LocalPlayer:WaitForChild("PlayerGui")
         end
         selectionBox.Adornee=selectedPart
-        -- Delete langsung pakai tombol keyboard Delete
+        addHandles(selectedPart)
+
+        -- Delete pakai tombol Delete
         UIS.InputBegan:Connect(function(input)
             if input.KeyCode==Enum.KeyCode.Delete and selectedPart then
                 selectedPart:Destroy()
